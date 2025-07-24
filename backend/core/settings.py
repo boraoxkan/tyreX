@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'companies',  # YENİ EKLENDİ
     'products',   # YENİ EKLENDİ
     'inventory',  # YENİ EKLENDİ
+    'subscriptions',  # YENİ EKLENDİ
+    'market',         # YENİ EKLENDİ
 ]
 
 MIDDLEWARE = [
@@ -141,7 +143,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 # ]
 
 
-# Cache (Önbellek) Ayarları - Redis
+# CACHE ayarlarını güncelleyin (Redis settings zaten var):
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -149,6 +151,8 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
+        "KEY_PREFIX": "tyrex",  # Prefix ekleyin
+        "TIMEOUT": 300,  # Varsayılan 5 dakika
     }
 }
 
@@ -186,4 +190,49 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
     'SLIDING_TOKEN_LIFETIME': timedelta(hours=1),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=7),
+}
+
+if DEBUG:
+    # Debug toolbar panels
+    DEBUG_TOOLBAR_PANELS = [
+        'debug_toolbar.panels.history.HistoryPanel',
+        'debug_toolbar.panels.versions.VersionsPanel',
+        'debug_toolbar.panels.timer.TimerPanel',
+        'debug_toolbar.panels.settings.SettingsPanel',
+        'debug_toolbar.panels.headers.HeadersPanel',
+        'debug_toolbar.panels.request.RequestPanel',
+        'debug_toolbar.panels.sql.SQLPanel',
+        'debug_toolbar.panels.staticfiles.StaticFilesPanel',
+        'debug_toolbar.panels.templates.TemplatesPanel',
+        'debug_toolbar.panels.cache.CachePanel',
+        'debug_toolbar.panels.signals.SignalsPanel',
+        'debug_toolbar.panels.logging.LoggingPanel',
+        'debug_toolbar.panels.redirects.RedirectsPanel',
+        'debug_toolbar.panels.profiling.ProfilingPanel',
+    ]
+    
+    DEBUG_TOOLBAR_CONFIG = {
+        'SHOW_TOOLBAR_CALLBACK': lambda request: True,  # Her zaman göster
+    }
+
+# Logging configuration (isteğe bağlı):
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+    },
 }
