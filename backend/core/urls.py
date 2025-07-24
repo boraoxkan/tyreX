@@ -7,6 +7,7 @@ urlpatterns = [
     
     # API v1 endpoint'leri
     path('api/v1/', include('users.urls')),
+    path('api/v1/inventory/', include('inventory.urls')),  # YENİ EKLENDİ
 ]
 
 # Debug Toolbar URL'ini sadece DEBUG=True iken ekle
