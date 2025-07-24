@@ -1,0 +1,19 @@
+# Django ve REST Framework
+django
+djangorestframework
+djangorestframework-simplejwt
+
+# Veritabanı ve Çevre Değişkenleri
+psycopg2-binary
+python-dotenv
+dj-database-url
+
+# Asenkron Görevler ve Önbellek
+celery
+redis
+django-redis
+
+# Yardımcı Araçlar ve Güvenlik
+django-cors-headers
+django-debug-toolbar
+djangorestframework-ratelimit

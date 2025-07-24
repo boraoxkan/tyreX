@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: backend_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    # DEĞİŞİKLİK: .env dosyasının yolu güncellendi
+    env_file:
+      - ./backend/.env
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: backend_redis
+    ports:
+      - "6379:6379"
+
+  web:
+    # DEĞİŞİKLİK: build context'i artık 'backend' klasörü
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend_web
+    command: python manage.py runserver 0.0.0.0:8000
+    # DEĞİŞİKLİK: Volume (paylaşılan klasör) yolu güncellendi
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    # DEĞİŞİKLİK: .env dosyasının yolu güncellendi
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:
