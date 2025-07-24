@@ -1,8 +1,9 @@
+# backend/users/models.py - İyileştirilmiş versiyon (opsiyonel)
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-# YENİ EKLENDİ: CustomUserManager Sınıfı
 class CustomUserManager(BaseUserManager):
     """
     E-posta adresi ile kullanıcı oluşturan özel kullanıcı yöneticisi.
@@ -35,19 +36,44 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-# MEVCUT User Modelini Güncelliyoruz
 class User(AbstractUser):
     """
-    Özel Kullanıcı Modeli.
+    Özel Kullanıcı Modeli - Company ile ilişkili
     """
     username = None
     email = models.EmailField(_("email address"), unique=True)
 
+    # İYİLEŞTİRME: Company ile direct ilişki (opsiyonel)
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='users',
+        verbose_name=_('Şirket'),
+        help_text=_('Kullanıcının bağlı olduğu şirket')
+    )
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
-    # YENİ EKLENDİ: Django'ya özel yöneticimizi kullanmasını söylüyoruz.
     objects = CustomUserManager()
 
     def __str__(self):
         return self.email
+    
+    def get_company_name(self):
+        """Kullanıcının şirket adını döndürür"""
+        return self.company.name if self.company else None
+    
+    def is_retailer_user(self):
+        """Perakendeci şirketine bağlı kullanıcı mı?"""
+        if self.company:
+            return self.company.is_retailer()
+        return False
+    
+    def is_wholesaler_user(self):
+        """Toptancı şirketine bağlı kullanıcı mı?"""
+        if self.company:
+            return self.company.is_wholesaler()
+        return False

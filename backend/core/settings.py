@@ -160,3 +160,30 @@ CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND_URL")
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
+
+# JWT Ayarları (backend/core/settings.py dosyasının sonuna ekleyin)
+from datetime import timedelta
+
+# Simple JWT Ayarları
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Access token 1 saat geçerli
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Refresh token 1 hafta geçerli
+    'ROTATE_REFRESH_TOKENS': True,  # Refresh token yenilendiğinde eski geçersiz olur
+    'BLACKLIST_AFTER_ROTATION': True,  # Eski refresh token'ları blacklist'e ekle
+    
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'JTI_CLAIM': 'jti',
+    
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(hours=1),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=7),
+}

@@ -1,9 +1,12 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.conf import settings # settings'i import et
+from django.conf import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    
+    # API v1 endpoint'leri
+    path('api/v1/', include('users.urls')),
 ]
 
 # Debug Toolbar URL'ini sadece DEBUG=True iken ekle
