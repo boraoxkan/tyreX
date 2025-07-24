@@ -35,6 +35,9 @@ INSTALLED_APPS = [
 
     # Kendi Uygulamalarımız
     'users',
+    'companies',  # YENİ EKLENDİ
+    'products',   # YENİ EKLENDİ
+    'inventory',  # YENİ EKLENDİ
 ]
 
 MIDDLEWARE = [
