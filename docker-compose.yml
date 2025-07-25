@@ -1,39 +1,63 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: backend_db
+    container_name: tyrex_db
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-    # DEĞİŞİKLİK: .env dosyasının yolu güncellendi
     env_file:
       - ./backend/.env
     ports:
       - "5432:5432"
+    networks:
+      - tyrex-network
 
   redis:
     image: redis:7-alpine
-    container_name: backend_redis
+    container_name: tyrex_redis
     ports:
       - "6379:6379"
+    networks:
+      - tyrex-network
 
-  web:
-    # DEĞİŞİKLİK: build context'i artık 'backend' klasörü
+  backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: backend_web
+    container_name: tyrex_backend
     command: python manage.py runserver 0.0.0.0:8000
-    # DEĞİŞİKLİK: Volume (paylaşılan klasör) yolu güncellendi
     volumes:
       - ./backend:/app
     ports:
       - "8000:8000"
-    # DEĞİŞİKLİK: .env dosyasının yolu güncellendi
     env_file:
       - ./backend/.env
     depends_on:
       - db
       - redis
+    networks:
+      - tyrex-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: tyrex_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Node modules'ı container'da tut
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - tyrex-network
 
 volumes:
   postgres_data:
+
+networks:
+  tyrex-network:
+    driver: bridge

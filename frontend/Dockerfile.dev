@@ -1,0 +1,24 @@
+# Development için ayrı Dockerfile
+FROM node:18-alpine
+
+# Çalışma dizinini ayarla
+WORKDIR /app
+
+# Package files'ları kopyala
+COPY package*.json ./
+
+# Dependencies'leri kur (dev dependencies dahil)
+RUN npm install
+
+# Proje dosyalarını kopyala
+COPY . .
+
+# Environment variables
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Port'u dışarıya aç
+EXPOSE 3000
+
+# Development server'ı başlat
+CMD ["npm", "run", "dev"]
