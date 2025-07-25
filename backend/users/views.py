@@ -338,3 +338,91 @@ def api_health_check(request):
             }
         }
     })
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def simple_registration_debug(request):
+    """
+    Debug için basit registration endpoint'i
+    POST /api/v1/auth/register-debug/
+    """
+    from django.db import transaction
+    from django.contrib.auth import get_user_model
+    from companies.models import Company
+    from decimal import Decimal
+    
+    User = get_user_model()
+    
+    try:
+        with transaction.atomic():
+            # 1. Company oluştur
+            company = Company.objects.create(
+                name='Debug Test Company',
+                company_type='retailer',
+                is_managed_by_tyrex=True,
+                email='debug@test.com',
+                is_active=True
+            )
+            
+            # 2. User oluştur
+            user = User.objects.create_user(
+                email='debug@test.com',
+                password='debug123',
+                first_name='Debug',
+                last_name='User',
+                company=company
+            )
+            
+            # 3. Subscription dene
+            subscription_info = None
+            try:
+                from subscriptions.models import SubscriptionPlan, Subscription
+                from datetime import timedelta
+                from django.utils import timezone
+                
+                basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
+                
+                subscription = Subscription.objects.create(
+                    company=company,
+                    plan=basic_plan,
+                    status='trialing',
+                    billing_cycle='monthly',
+                    start_date=timezone.now(),
+                    trial_end_date=timezone.now() + timedelta(days=7),
+                    current_period_start=timezone.now(),
+                    current_period_end=timezone.now() + timedelta(days=7),
+                    amount=Decimal('0.00'),
+                    currency='TRY',
+                    current_users=1,
+                    notes='Debug subscription'
+                )
+                
+                subscription_info = {
+                    'created': True,
+                    'id': subscription.id,
+                    'status': subscription.status,
+                    'plan': basic_plan.name
+                }
+                
+            except Exception as sub_error:
+                subscription_info = {
+                    'created': False,
+                    'error': str(sub_error)
+                }
+            
+            return Response({
+                'success': True,
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'company_id': company.id
+                },
+                'subscription': subscription_info
+            })
+            
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

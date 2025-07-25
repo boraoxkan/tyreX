@@ -267,11 +267,16 @@ class RetailerRegistrationSerializer(serializers.Serializer):
         
         return validated_relations
     
+    # backend/users/serializers.py - Updated create method
     @transaction.atomic
     def create(self, validated_data):
         """
-        Perakendeci kaydı oluşturur - Gelişmiş toptancı ilişkileri ile
+        Perakendeci kaydı oluşturur - Otomatik 7 günlük deneme aboneliği ile
         """
+        from decimal import Decimal
+        from datetime import timedelta
+        from django.utils import timezone
+        
         # Şifre onayını çıkar
         validated_data.pop('password_confirm')
         
@@ -301,6 +306,7 @@ class RetailerRegistrationSerializer(serializers.Serializer):
             'name': validated_data.pop('company_name'),
             'company_type': 'retailer',
             'is_managed_by_tyrex': True,
+            'email': validated_data['email'],  # Kullanıcı emaili ile aynı
             'phone': validated_data.pop('company_phone', ''),
             'address': validated_data.pop('company_address', ''),
             'is_active': True
@@ -322,7 +328,48 @@ class RetailerRegistrationSerializer(serializers.Serializer):
             **user_data
         )
         
-        # 3. RetailerWholesaler ilişkilerini oluştur
+        # 3. Otomatik 7 günlük deneme aboneliği oluştur
+        subscription_created = False
+        trial_subscription = None
+        
+        try:
+            from subscriptions.models import SubscriptionPlan, Subscription
+            
+            # Basic planı al (deneme için)
+            basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
+            
+            # Deneme aboneliği oluştur
+            trial_subscription = Subscription.objects.create(
+                company=company,
+                plan=basic_plan,
+                status='trialing',
+                billing_cycle='monthly',
+                start_date=timezone.now(),
+                trial_end_date=timezone.now() + timedelta(days=7),  # 7 günlük deneme
+                current_period_start=timezone.now(),
+                current_period_end=timezone.now() + timedelta(days=7),
+                amount=Decimal('0.00'),  # Deneme sürümü ücretsiz
+                currency='TRY',
+                current_users=1,
+                current_warehouses=0,
+                current_products=0,
+                api_calls_this_month=0,
+                notes='Otomatik oluşturulan 7 günlük deneme aboneliği'
+            )
+            
+            subscription_created = True
+            
+        except Exception as subscription_error:
+            # Subscription oluşturulamazsa da kayıt devam etsin
+            # Ama hatayı loglayalım
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Subscription creation failed: {subscription_error}")
+            
+            subscription_created = False
+            trial_subscription = None
+        
+        # 4. RetailerWholesaler ilişkilerini oluştur
         retailer_wholesaler_relations = []
         for relation in wholesaler_relations:
             try:
@@ -346,9 +393,127 @@ class RetailerRegistrationSerializer(serializers.Serializer):
         return {
             'user': user,
             'company': company,
+            'subscription': trial_subscription,
+            'subscription_created': subscription_created,
             'wholesaler_relations_count': len(retailer_wholesaler_relations),
             'wholesaler_relations': retailer_wholesaler_relations
         }
+    
+    def to_representation(self, instance):
+        """Başarılı kayıt sonrası döndürülecek veri yapısı - Abonelik bilgisi dahil"""
+        if isinstance(instance, dict):
+            user = instance['user']
+            company = instance['company']
+            subscription = instance.get('subscription')
+            subscription_created = instance.get('subscription_created', False)
+            relations_count = instance['wholesaler_relations_count']
+            
+            response_data = {
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'date_joined': user.date_joined
+                },
+                'company': {
+                    'id': company.id,
+                    'name': company.name,
+                    'company_type': company.company_type,
+                    'is_managed_by_tyrex': company.is_managed_by_tyrex
+                },
+                'subscription': {
+                    'created': subscription_created,
+                    'plan': subscription.plan.name if subscription else None,
+                    'status': subscription.get_status_display() if subscription else None,
+                    'trial_end_date': subscription.trial_end_date if subscription else None,
+                    'marketplace_access': subscription.can_access_marketplace() if subscription else False,
+                    'dynamic_pricing': subscription.can_use_dynamic_pricing() if subscription else False
+                } if subscription else {
+                    'created': False,
+                    'plan': None,
+                    'status': 'Plan oluşturulamadı',
+                    'marketplace_access': False,
+                    'dynamic_pricing': False
+                },
+                'wholesaler_relations_created': relations_count,
+                'message': 'Perakendeci kaydı başarıyla oluşturuldu. 7 günlük ücretsiz deneme başlatıldı!'
+            }
+            
+            if subscription_created:
+                response_data['trial_info'] = {
+                    'trial_days': 7,
+                    'trial_features': [
+                        'B2B Pazaryeri Erişimi',
+                        'Dinamik Fiyatlandırma',
+                        'Sipariş Yönetimi',
+                        '3 Kullanıcı',
+                        '2 Depo',
+                        '500 Ürün Limiti'
+                    ]
+                }
+            
+            return response_data
+        
+        return instance
+    
+    def to_representation(self, instance):
+        """Başarılı kayıt sonrası döndürülecek veri yapısı - Abonelik bilgisi dahil"""
+        if isinstance(instance, dict):
+            user = instance['user']
+            company = instance['company']
+            subscription = instance.get('subscription')
+            subscription_created = instance.get('subscription_created', False)
+            relations_count = instance['wholesaler_relations_count']
+            
+            response_data = {
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'date_joined': user.date_joined
+                },
+                'company': {
+                    'id': company.id,
+                    'name': company.name,
+                    'company_type': company.company_type,
+                    'is_managed_by_tyrex': company.is_managed_by_tyrex
+                },
+                'subscription': {
+                    'created': subscription_created,
+                    'plan': subscription.plan.name if subscription else None,
+                    'status': subscription.get_status_display() if subscription else None,
+                    'trial_end_date': subscription.trial_end_date if subscription else None,
+                    'marketplace_access': subscription.can_access_marketplace() if subscription else False,
+                    'dynamic_pricing': subscription.can_use_dynamic_pricing() if subscription else False
+                } if subscription else {
+                    'created': False,
+                    'plan': None,
+                    'status': 'Plan oluşturulamadı',
+                    'marketplace_access': False,
+                    'dynamic_pricing': False
+                },
+                'wholesaler_relations_created': relations_count,
+                'message': 'Perakendeci kaydı başarıyla oluşturuldu. 7 günlük ücretsiz deneme başlatıldı!'
+            }
+            
+            if subscription_created:
+                response_data['trial_info'] = {
+                    'trial_days': 7,
+                    'trial_features': [
+                        'B2B Pazaryeri Erişimi',
+                        'Dinamik Fiyatlandırma',
+                        'Sipariş Yönetimi',
+                        '3 Kullanıcı',
+                        '2 Depo',
+                        '500 Ürün Limiti'
+                    ]
+                }
+            
+            return response_data
+        
+        return instance
     
     def to_representation(self, instance):
         """Başarılı kayıt sonrası döndürülecek veri yapısı"""

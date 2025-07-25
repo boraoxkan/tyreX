@@ -1,3 +1,5 @@
+# backend/core/urls.py - Güncellenmiş versiyon
+
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -8,7 +10,8 @@ urlpatterns = [
     # API v1 endpoint'leri
     path('api/v1/', include('users.urls')),
     path('api/v1/inventory/', include('inventory.urls')),
-    path('api/v1/market/', include('market.urls')),  # YENİ EKLENDİ
+    path('api/v1/market/', include('market.urls')),
+    path('api/v1/', include('orders.urls')),  # YENİ EKLENDİ
 ]
 
 # Debug Toolbar URL'ini sadece DEBUG=True iken ekle
