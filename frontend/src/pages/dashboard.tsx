@@ -363,4 +363,36 @@ const DashboardPage: React.FC = () => {
                     <h4 className="text-sm font-medium text-gray-900 mb-3">
                       Toptancı İlişkileri ({companyInfo.wholesaler_relationships?.length || 0})
                     </h4>
-                    {companyInfo.wholesaler_relationships?.length >
+                    {companyInfo.wholesaler_relationships?.length > 0 ? (
+                      <div className="space-y-2">
+                        {companyInfo.wholesaler_relationships.slice(0, 3).map((relation: any, index: number) => (
+                          <div key={index} className="text-sm">
+                            <p className="font-medium text-gray-900">{relation.wholesaler_name}</p>
+                            <p className="text-xs text-gray-500">
+                              Kredi Limiti: {relation.credit_limit ? formatCurrency(relation.credit_limit) : 'Belirtilmemiş'}
+                            </p>
+                          </div>
+                        ))}
+                        {companyInfo.wholesaler_relationships.length > 3 && (
+                          <p className="text-xs text-gray-500">
+                            +{companyInfo.wholesaler_relationships.length - 3} tane daha...
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        Henüz toptancı ilişkisi bulunmamaktadır.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Layout>
+    </AuthGuard>
+  );
+};
+
+export default DashboardPage;

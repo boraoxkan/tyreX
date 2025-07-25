@@ -199,3 +199,366 @@ const RegisterPage: React.FC = () => {
                         )}
                         placeholder="Adınız"
                       />
+                      {errors.first_name && (
+                        <p className="form-error">{errors.first_name.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="last_name" className="form-label">
+                        Soyad *
+                      </label>
+                      <input
+                        id="last_name"
+                        type="text"
+                        {...register('last_name')}
+                        className={cn(
+                          'form-input',
+                          errors.last_name && 'form-input-error'
+                        )}
+                        placeholder="Soyadınız"
+                      />
+                      {errors.last_name && (
+                        <p className="form-error">{errors.last_name.message}</p>
+                      )}
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label htmlFor="email" className="form-label">
+                        E-posta *
+                      </label>
+                      <input
+                        id="email"
+                        type="email"
+                        {...register('email')}
+                        className={cn(
+                          'form-input',
+                          errors.email && 'form-input-error'
+                        )}
+                        placeholder="ornek@email.com"
+                      />
+                      {errors.email && (
+                        <p className="form-error">{errors.email.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="password" className="form-label">
+                        Şifre *
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          {...register('password')}
+                          className={cn(
+                            'form-input pr-10',
+                            errors.password && 'form-input-error'
+                          )}
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5 text-gray-400" />
+                          ) : (
+                            <Eye className="h-5 w-5 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                      {errors.password && (
+                        <p className="form-error">{errors.password.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="password_confirm" className="form-label">
+                        Şifre Tekrar *
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="password_confirm"
+                          type={showPasswordConfirm ? 'text' : 'password'}
+                          {...register('password_confirm')}
+                          className={cn(
+                            'form-input pr-10',
+                            errors.password_confirm && 'form-input-error'
+                          )}
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                          onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                        >
+                          {showPasswordConfirm ? (
+                            <EyeOff className="h-5 w-5 text-gray-400" />
+                          ) : (
+                            <Eye className="h-5 w-5 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                      {errors.password_confirm && (
+                        <p className="form-error">{errors.password_confirm.message}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Company Information */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    Şirket Bilgileri
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="company_name" className="form-label">
+                        Şirket Adı *
+                      </label>
+                      <input
+                        id="company_name"
+                        type="text"
+                        {...register('company_name')}
+                        className={cn(
+                          'form-input',
+                          errors.company_name && 'form-input-error'
+                        )}
+                        placeholder="Şirket adınız"
+                      />
+                      {errors.company_name && (
+                        <p className="form-error">{errors.company_name.message}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="company_phone" className="form-label">
+                          Şirket Telefonu
+                        </label>
+                        <input
+                          id="company_phone"
+                          type="tel"
+                          {...register('company_phone')}
+                          className={cn(
+                            'form-input',
+                            errors.company_phone && 'form-input-error'
+                          )}
+                          placeholder="0532 123 45 67"
+                        />
+                        {errors.company_phone && (
+                          <p className="form-error">{errors.company_phone.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="payment_terms_days" className="form-label">
+                          Varsayılan Ödeme Vadesi (Gün)
+                        </label>
+                        <input
+                          id="payment_terms_days"
+                          type="number"
+                          {...register('payment_terms_days', { valueAsNumber: true })}
+                          className={cn(
+                            'form-input',
+                            errors.payment_terms_days && 'form-input-error'
+                          )}
+                          placeholder="30"
+                          min="1"
+                          max="365"
+                        />
+                        {errors.payment_terms_days && (
+                          <p className="form-error">{errors.payment_terms_days.message}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="company_address" className="form-label">
+                        Şirket Adresi
+                      </label>
+                      <textarea
+                        id="company_address"
+                        {...register('company_address')}
+                        rows={3}
+                        className={cn(
+                          'form-input',
+                          errors.company_address && 'form-input-error'
+                        )}
+                        placeholder="Şirket adresiniz"
+                      />
+                      {errors.company_address && (
+                        <p className="form-error">{errors.company_address.message}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Wholesaler Relations */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Toptancı İlişkileri (Opsiyonel)
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={addWholesaler}
+                      className="btn btn-outline btn-sm"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Toptancı Ekle
+                    </button>
+                  </div>
+
+                  {selectedWholesalers.length > 0 && (
+                    <div className="space-y-4">
+                      {selectedWholesalers.map((wholesaler) => (
+                        <div key={wholesaler.id} className="p-4 border border-gray-200 rounded-lg">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-medium text-gray-900">
+                              Toptancı #{selectedWholesalers.indexOf(wholesaler) + 1}
+                            </h4>
+                            <button
+                              type="button"
+                              onClick={() => removeWholesaler(wholesaler.id)}
+                              className="text-error-600 hover:text-error-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="form-label">Toptancı</label>
+                              <select
+                                value={wholesaler.wholesaler_id}
+                                onChange={(e) => updateWholesaler(wholesaler.id, 'wholesaler_id', e.target.value)}
+                                className="form-input"
+                              >
+                                <option value="">Toptancı seçin...</option>
+                                {wholesalers.map((w) => (
+                                  <option key={w.id} value={w.id}>
+                                    {w.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="form-label">Kredi Limiti (₺)</label>
+                              <input
+                                type="number"
+                                value={wholesaler.credit_limit}
+                                onChange={(e) => updateWholesaler(wholesaler.id, 'credit_limit', e.target.value)}
+                                className="form-input"
+                                placeholder="50000"
+                                min="0"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="form-label">Ödeme Vadesi (Gün)</label>
+                              <input
+                                type="number"
+                                value={wholesaler.payment_terms_days}
+                                onChange={(e) => updateWholesaler(wholesaler.id, 'payment_terms_days', parseInt(e.target.value))}
+                                className="form-input"
+                                placeholder="30"
+                                min="1"
+                                max="365"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="form-label">Notlar</label>
+                              <input
+                                type="text"
+                                value={wholesaler.notes}
+                                onChange={(e) => updateWholesaler(wholesaler.id, 'notes', e.target.value)}
+                                className="form-input"
+                                placeholder="Özel notlar..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedWholesalers.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="text-sm">
+                        Henüz toptancı eklenmedi. Daha sonra ayarlardan ekleyebilirsiniz.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Terms and Conditions */}
+                <div>
+                  <div className="flex items-center">
+                    <input
+                      id="accept_terms"
+                      type="checkbox"
+                      {...register('accept_terms')}
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="accept_terms" className="ml-2 block text-sm text-gray-900">
+                      <Link href="/terms" className="text-primary-600 hover:text-primary-500">
+                        Kullanım Koşulları
+                      </Link>
+                      {' '}ve{' '}
+                      <Link href="/privacy" className="text-primary-600 hover:text-primary-500">
+                        Gizlilik Politikası
+                      </Link>
+                      'nı okudum ve kabul ediyorum. *
+                    </label>
+                  </div>
+                  {errors.accept_terms && (
+                    <p className="form-error">{errors.accept_terms.message}</p>
+                  )}
+                </div>
+
+                {/* Submit Button */}
+                <div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || isLoading}
+                    className="btn btn-primary w-full flex justify-center py-3"
+                  >
+                    {isSubmitting || isLoading ? (
+                      <>
+                        <LoadingSpinner size="sm" color="white" className="mr-2" />
+                        Kayıt oluşturuluyor...
+                      </>
+                    ) : (
+                      '7 Gün Ücretsiz Deneme Başlat'
+                    )}
+                  </button>
+                </div>
+
+                {/* Additional Info */}
+                <div className="bg-primary-50 border border-primary-200 rounded-md p-4">
+                  <h4 className="text-sm font-medium text-primary-800 mb-2">
+                    7 Günlük Ücretsiz Deneme
+                  </h4>
+                  <ul className="text-sm text-primary-700 space-y-1">
+                    <li>✓ Pazaryerine tam erişim</li>
+                    <li>✓ Dinamik fiyatlandırma</li>
+                    <li>✓ Sınırsız sipariş</li>
+                    <li>✓ Kredi kartı gerekmiyor</li>
+                    <li>✓ İstediğiniz zaman iptal edin</li>
+                  </ul>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    </AuthGuard>
+  );
+};
+
+export default RegisterPage;

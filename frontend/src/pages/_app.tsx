@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import type { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import { useAuthActions } from '@/store/authStore';
-import '@/app/globals.css';
+import '../styles/globals.css';
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
