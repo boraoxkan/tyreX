@@ -1,3 +1,4 @@
+// frontend/src/store/authStore.ts - Complete fixed version
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { 
@@ -60,24 +61,51 @@ export const useAuthStore = create<AuthState>()(
           
           const response = await authApi.login(credentials);
           
+          console.log('Login response:', response);
+          
+          // Check if response has the expected structure
+          if (!response.access || !response.refresh) {
+            throw new Error('Invalid login response: missing tokens');
+          }
+          
           // Store tokens
           setAuthTokens(response.access, response.refresh);
           
-          // Update state
-          set({ 
-            user: response.user,
-            isLoading: false,
-            error: null 
-          });
+          // The user data might be in response.user or just response
+          const userData = response.user || response;
+          
+          if (!userData || !userData.email) {
+            // If no user data in login response, fetch it separately
+            try {
+              const userProfile = await userApi.getProfile();
+              set({ 
+                user: userProfile,
+                isLoading: false,
+                error: null 
+              });
+            } catch (profileError) {
+              console.error('Failed to fetch user profile after login:', profileError);
+              throw new Error('Login successful but failed to fetch user profile');
+            }
+          } else {
+            set({ 
+              user: userData,
+              isLoading: false,
+              error: null 
+            });
+          }
           
           // Fetch additional user data
           await get().checkAuth();
           
-          console.log('✅ Login successful:', response.user.email);
+          console.log('✅ Login successful');
           
         } catch (error: any) {
           const errorMessage = handleApiError(error);
-          console.error('❌ Login failed:', errorMessage);
+          console.error('❌ Login failed:', errorMessage, error);
+          
+          // Clear any stored tokens on failure
+          clearAuthTokens();
           
           set({ 
             user: null, 
@@ -100,7 +128,9 @@ export const useAuthStore = create<AuthState>()(
           
           const response = await authApi.register(data);
           
-          // Automatically login after registration
+          console.log('Registration response:', response);
+          
+          // After successful registration, automatically login
           await get().login({
             email: data.email,
             password: data.password
@@ -110,7 +140,7 @@ export const useAuthStore = create<AuthState>()(
           
         } catch (error: any) {
           const errorMessage = handleApiError(error);
-          console.error('❌ Registration failed:', errorMessage);
+          console.error('❌ Registration failed:', errorMessage, error);
           
           set({ 
             user: null, 
@@ -166,6 +196,10 @@ export const useAuthStore = create<AuthState>()(
           // Fetch user profile
           const user = await userApi.getProfile();
           
+          if (!user || !user.email) {
+            throw new Error('Invalid user profile data');
+          }
+          
           // Fetch company info
           let company = null;
           let subscription = null;
@@ -174,19 +208,19 @@ export const useAuthStore = create<AuthState>()(
             const companyData = await userApi.getCompanyInfo();
             company = companyData.company;
             
-            // Try to get subscription info from user data or make a separate call
-            // For now, we'll set basic subscription info
+            // Set subscription info based on company or user data
             if (company) {
               subscription = {
                 plan: 'Temel Plan', // This should come from API
-                status: 'active',
-                marketplace_access: true,
-                dynamic_pricing: true,
-                trial_end_date: null
+                status: 'trialing', // This should come from API
+                marketplace_access: true, // This should come from API
+                dynamic_pricing: true, // This should come from API
+                trial_end_date: null // This should come from API
               };
             }
           } catch (companyError) {
             console.warn('⚠️ Could not fetch company info:', companyError);
+            // Don't throw here, just continue without company info
           }
           
           set({ 

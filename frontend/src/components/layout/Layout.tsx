@@ -1,3 +1,4 @@
+// frontend/src/components/layout/Layout.tsx - Complete updated version
 import React, { ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -12,7 +13,9 @@ import {
   LogOut,
   User,
   Bell,
-  Search
+  Search,
+  Warehouse,
+  CreditCard
 } from 'lucide-react';
 import { useAuth, useAuthActions } from '@/store/authStore';
 import { cn } from '@/lib/utils';
@@ -31,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({
   showHeader = true 
 }) => {
   const router = useRouter();
-  const { user, company, isAuthenticated } = useAuth();
+  const { user, company, isAuthenticated, hasMarketplaceAccess } = useAuth();
   const { logout } = useAuthActions();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
@@ -48,12 +51,31 @@ const Layout: React.FC<LayoutProps> = ({
       href: '/marketplace',
       icon: ShoppingCart,
       current: router.pathname.startsWith('/marketplace'),
+      requiresMarketplace: true,
     },
     {
       name: 'Siparişler',
       href: '/orders',
       icon: Package,
       current: router.pathname.startsWith('/orders'),
+    },
+    {
+      name: 'Stok Yönetimi',
+      href: '/dashboard/my-stock',
+      icon: Package,
+      current: router.pathname.startsWith('/dashboard/my-stock'),
+    },
+    {
+      name: 'Depolarım',
+      href: '/dashboard/my-warehouses',
+      icon: Warehouse,
+      current: router.pathname.startsWith('/dashboard/my-warehouses'),
+    },
+    {
+      name: 'Abonelik',
+      href: '/dashboard/subscription',
+      icon: CreditCard,
+      current: router.pathname.startsWith('/dashboard/subscription'),
     },
     {
       name: 'Raporlar',
@@ -115,25 +137,46 @@ const Layout: React.FC<LayoutProps> = ({
       <nav className="flex-1 px-4 py-4 space-y-1">
         {navigationItems.map((item) => {
           const Icon = item.icon;
+          
+          // Check if user has marketplace access for marketplace-required items
+          const isAccessible = !item.requiresMarketplace || hasMarketplaceAccess;
+          
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={isAccessible ? item.href : '#'}
               className={cn(
                 "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
                 item.current
                   ? "bg-primary-100 text-primary-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  : isAccessible
+                  ? "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  : "text-gray-400 cursor-not-allowed"
               )}
-              onClick={() => setSidebarOpen(false)}
+              onClick={(e) => {
+                if (!isAccessible) {
+                  e.preventDefault();
+                  // Redirect to subscription page for marketplace access
+                  router.push('/dashboard/subscription');
+                } else {
+                  setSidebarOpen(false);
+                }
+              }}
             >
               <Icon className={cn(
                 "mr-3 h-5 w-5 flex-shrink-0",
                 item.current
                   ? "text-primary-500"
-                  : "text-gray-400 group-hover:text-gray-500"
+                  : isAccessible
+                  ? "text-gray-400 group-hover:text-gray-500"
+                  : "text-gray-300"
               )} />
               {item.name}
+              {!isAccessible && (
+                <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                  Pro
+                </span>
+              )}
             </Link>
           );
         })}

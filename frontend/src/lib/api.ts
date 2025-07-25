@@ -1,3 +1,4 @@
+// frontend/src/lib/api.ts - Complete fixed version
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import Cookies from 'js-cookie';
 
@@ -26,7 +27,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   access: string;
   refresh: string;
-  user: User;
+  user?: User;
 }
 
 export interface RegisterRequest {
@@ -101,6 +102,56 @@ export interface Wholesaler {
   address?: string;
 }
 
+// Inventory Types
+export interface Warehouse {
+  id: number;
+  name: string;
+  code: string;
+  company_name: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  phone?: string;
+  email?: string;
+  manager_name?: string;
+  total_area?: string;
+  storage_capacity: number;
+  warehouse_type: string;
+  is_active: boolean;
+  total_products: number;
+  total_stock_value: string;
+  created_at: string;
+}
+
+export interface StockItem {
+  id: number;
+  product: number;
+  product_details: {
+    id: number;
+    name: string;
+    sku: string;
+    brand?: string;
+    category_name?: string;
+  };
+  warehouse: number;
+  warehouse_name: string;
+  warehouse_code: string;
+  quantity: number;
+  reserved_quantity: number;
+  available_quantity: number;
+  minimum_stock: number;
+  maximum_stock?: number;
+  cost_price?: string;
+  sale_price?: string;
+  location_code?: string;
+  lot_number?: string;
+  stock_status: string;
+  stock_status_display: string;
+  total_value: string;
+  is_active: boolean;
+  is_sellable: boolean;
+}
+
 // Create Axios instance
 const api: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1',
@@ -123,7 +174,7 @@ api.interceptors.request.use(
       console.log(`🔄 ${config.method?.toUpperCase()} ${config.url}`, {
         data: config.data,
         params: config.params,
-        headers: config.headers.Authorization ? '***' : 'No auth'
+        headers: config.headers.Authorization ? 'Bearer ***' : 'No auth'
       });
     }
     
@@ -184,8 +235,7 @@ api.interceptors.response.use(
           console.error('Token refresh failed:', refreshError);
           
           // Clear tokens and redirect to login
-          Cookies.remove('access_token');
-          Cookies.remove('refresh_token');
+          clearAuthTokens();
           
           if (typeof window !== 'undefined') {
             window.location.href = '/auth/login';
@@ -209,14 +259,33 @@ api.interceptors.response.use(
 export const authApi = {
   // Login
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    const response = await api.post<LoginResponse>('/auth/token/', credentials);
-    return response.data;
+    try {
+      const response = await api.post<LoginResponse>('/auth/token/', credentials);
+      
+      // Handle different response formats from Django
+      const data = response.data;
+      
+      // Ensure we have the required tokens
+      if (!data.access || !data.refresh) {
+        throw new Error('Invalid response: missing authentication tokens');
+      }
+      
+      return data;
+    } catch (error: any) {
+      console.error('Login API error:', error.response?.data || error.message);
+      throw error;
+    }
   },
   
   // Register
   register: async (data: RegisterRequest): Promise<RegisterResponse> => {
-    const response = await api.post<RegisterResponse>('/auth/register/', data);
-    return response.data;
+    try {
+      const response = await api.post<RegisterResponse>('/auth/register/', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Register API error:', error.response?.data || error.message);
+      throw error;
+    }
   },
   
   // Refresh token
@@ -234,8 +303,19 @@ export const authApi = {
 export const userApi = {
   // Get current user profile
   getProfile: async (): Promise<User> => {
-    const response = await api.get<User>('/users/me/');
-    return response.data;
+    try {
+      const response = await api.get<User>('/users/me/');
+      
+      // Ensure we have valid user data
+      if (!response.data || !response.data.email) {
+        throw new Error('Invalid user profile data received');
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Get profile API error:', error.response?.data || error.message);
+      throw error;
+    }
   },
   
   // Update user profile
@@ -264,6 +344,77 @@ export const companyApi = {
   // Get wholesalers list
   getWholesalers: async (): Promise<Wholesaler[]> => {
     const response = await api.get<Wholesaler[]>('/companies/wholesalers/');
+    return response.data;
+  },
+};
+
+export const inventoryApi = {
+  // Warehouse endpoints
+  getWarehouses: async (): Promise<Warehouse[]> => {
+    const response = await api.get<Warehouse[]>('/inventory/warehouses/');
+    return response.data;
+  },
+
+  createWarehouse: async (data: any): Promise<{ message: string; warehouse: Warehouse }> => {
+    const response = await api.post<{ message: string; warehouse: Warehouse }>('/inventory/warehouses/', data);
+    return response.data;
+  },
+
+  updateWarehouse: async (id: number, data: any): Promise<{ message: string; warehouse: Warehouse }> => {
+    const response = await api.put<{ message: string; warehouse: Warehouse }>(`/inventory/warehouses/${id}/`, data);
+    return response.data;
+  },
+
+  deleteWarehouse: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/inventory/warehouses/${id}/`);
+    return response.data;
+  },
+
+  getWarehouseStockSummary: async (id: number): Promise<any> => {
+    const response = await api.get(`/inventory/warehouses/${id}/stock_summary/`);
+    return response.data;
+  },
+
+  // Stock Item endpoints
+  getStockItems: async (params?: URLSearchParams): Promise<StockItem[]> => {
+    const url = params ? `/inventory/stock-items/?${params.toString()}` : '/inventory/stock-items/';
+    const response = await api.get<StockItem[]>(url);
+    return response.data;
+  },
+
+  createStockItem: async (data: any): Promise<{ message: string; stock_item: StockItem }> => {
+    const response = await api.post<{ message: string; stock_item: StockItem }>('/inventory/stock-items/', data);
+    return response.data;
+  },
+
+  updateStockItem: async (id: number, data: any): Promise<{ message: string; stock_item: StockItem }> => {
+    const response = await api.put<{ message: string; stock_item: StockItem }>(`/inventory/stock-items/${id}/`, data);
+    return response.data;
+  },
+
+  deleteStockItem: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/inventory/stock-items/${id}/`);
+    return response.data;
+  },
+
+  getLowStockItems: async (): Promise<{ count: number; results: StockItem[] }> => {
+    const response = await api.get<{ count: number; results: StockItem[] }>('/inventory/stock-items/low_stock/');
+    return response.data;
+  },
+
+  getOutOfStockItems: async (): Promise<{ count: number; results: StockItem[] }> => {
+    const response = await api.get<{ count: number; results: StockItem[] }>('/inventory/stock-items/out_of_stock/');
+    return response.data;
+  },
+
+  stockMovement: async (id: number, data: any): Promise<any> => {
+    const response = await api.post(`/inventory/stock-items/${id}/stock_movement/`, data);
+    return response.data;
+  },
+
+  // Inventory summary
+  getInventorySummary: async (): Promise<any> => {
+    const response = await api.get('/inventory/summary/');
     return response.data;
   },
 };
