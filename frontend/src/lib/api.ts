@@ -152,6 +152,180 @@ export interface StockItem {
   is_sellable: boolean;
 }
 
+// Market Types (add to existing types)
+export interface MarketProduct {
+  id: number;
+  name: string;
+  slug: string;
+  sku: string;
+  brand?: string;
+  model?: string;
+  short_description?: string;
+  category_name?: string;
+  category_path?: string;
+  weight?: string;
+  total_stock: number;
+  available_stock: number;
+  base_price?: string;
+  final_price?: string;
+  discount_percentage: number;
+  wholesaler_info?: {
+    id: number;
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  };
+  is_known_wholesaler: boolean;
+  attributes: Array<{
+    name: string;
+    value: string;
+    unit?: string;
+  }>;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface MarketFilter {
+  category?: number;
+  brand?: string;
+  min_price?: number;
+  max_price?: number;
+  in_stock?: boolean;
+  known_wholesalers_only?: boolean;
+  search?: string;
+  ordering?: string;
+}
+
+export interface MarketplaceStats {
+  total_products: number;
+  total_wholesalers: number;
+  known_wholesalers: number;
+  products_in_stock: number;
+  average_discount: string;
+  categories_count: number;
+  your_potential_savings: string;
+}
+
+// Order Types (add to existing types)
+export interface OrderItem {
+  id?: number;
+  product: number;
+  product_details?: {
+    id: number;
+    name: string;
+    sku: string;
+    brand?: string;
+    category_name?: string;
+  };
+  warehouse?: number;
+  warehouse_name?: string;
+  wholesaler_name?: string;
+  quantity: number;
+  unit_price?: string;
+  wholesaler_reference_price?: string;
+  total_price?: string;
+  discount_percentage?: string;
+  discount_amount?: string;
+  calculated_discount_percentage?: string;
+  product_name?: string;
+  product_sku?: string;
+  product_brand?: string;
+  is_canceled?: boolean;
+  canceled_at?: string;
+  cancel_reason?: string;
+}
+
+export interface Order {
+  id: number;
+  order_number: string;
+  uuid: string;
+  retailer: number;
+  retailer_name: string;
+  wholesaler: number;
+  wholesaler_name: string;
+  retailer_user: number;
+  retailer_user_name: string;
+  status: string;
+  status_display: string;
+  payment_status: string;
+  payment_status_display: string;
+  subtotal: string;
+  tax_amount: string;
+  shipping_cost: string;
+  discount_amount: string;
+  total_amount: string;
+  currency: string;
+  tyrex_commission_rate: string;
+  tyrex_commission_amount: string;
+  delivery_address?: string;
+  delivery_contact?: string;
+  delivery_phone?: string;
+  payment_terms_days: number;
+  due_date?: string;
+  notes?: string;
+  order_date: string;
+  confirmed_at?: string;
+  shipped_at?: string;
+  delivered_at?: string;
+  canceled_at?: string;
+  items: OrderItem[];
+  total_items: number;
+  total_unique_products: number;
+  can_be_canceled: boolean;
+  can_be_confirmed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CartItem {
+  product_id: number;
+  quantity: number;
+}
+
+export interface CartCalculation {
+  wholesaler: {
+    id: number;
+    name: string;
+  };
+  items: Array<{
+    product: {
+      id: number;
+      name: string;
+      sku: string;
+      brand?: string;
+    };
+    quantity: number;
+    available_stock: number;
+    unit_price: string;
+    wholesaler_reference_price: string;
+    discount_percentage: string;
+    item_total: string;
+    warehouse: {
+      id: number;
+      name: string;
+    };
+  }>;
+  subtotal: string;
+  total_amount: string;
+  currency: string;
+  total_items: number;
+  unique_products: number;
+}
+
+export interface CreateOrderRequest {
+  wholesaler_id: number;
+  items: Array<{
+    product_id: number;
+    quantity: number;
+    stock_item_id?: number;
+  }>;
+  delivery_address?: string;
+  delivery_contact?: string;
+  delivery_phone?: string;
+  notes?: string;
+}
+
 // Create Axios instance
 const api: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1',
@@ -161,10 +335,17 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor - Add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('access_token');
+    // Cookie'den token oku (localStorage yerine)
+    const getTokenFromCookie = () => {
+      const cookies = document.cookie.split(';');
+      const accessTokenCookie = cookies.find(c => c.trim().startsWith('access_token='));
+      return accessTokenCookie ? accessTokenCookie.split('=')[1] : null;
+    };
+
+    const token = getTokenFromCookie();
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -186,7 +367,7 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handle token refresh and errors
+// Response interceptor da güncelleyin (refresh token logic):
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     if (process.env.NODE_ENV === 'development') {
@@ -212,30 +393,42 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      const refreshToken = Cookies.get('refresh_token');
+      // Cookie'den refresh token oku
+      const getRefreshTokenFromCookie = () => {
+        const cookies = document.cookie.split(';');
+        const refreshTokenCookie = cookies.find(c => c.trim().startsWith('refresh_token='));
+        return refreshTokenCookie ? refreshTokenCookie.split('=')[1] : null;
+      };
+
+      const refreshToken = getRefreshTokenFromCookie();
+      
       if (refreshToken) {
         try {
+          console.log('🔄 Token expired, refreshing...');
+          
           const response = await axios.post(
             `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/auth/token/refresh/`,
             { refresh: refreshToken }
           );
           
           const newAccessToken = response.data.access;
-          Cookies.set('access_token', newAccessToken, { 
-            expires: 1, // 1 day
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax'
-          });
+          
+          // Cookie'ye yeni token'ı kaydet
+          document.cookie = `access_token=${newAccessToken}; path=/; max-age=86400; SameSite=Lax`;
+          
+          console.log('✅ Token refreshed successfully');
           
           // Retry original request with new token
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           return api(originalRequest);
           
         } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
+          console.error('❌ Token refresh failed:', refreshError);
           
           // Clear tokens and redirect to login
-          clearAuthTokens();
+          document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+          document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+          localStorage.removeItem('auth-storage');
           
           if (typeof window !== 'undefined') {
             window.location.href = '/auth/login';
@@ -244,6 +437,7 @@ api.interceptors.response.use(
           return Promise.reject(refreshError);
         }
       } else {
+        console.log('❌ No refresh token, redirecting to login');
         // No refresh token, redirect to login
         if (typeof window !== 'undefined') {
           window.location.href = '/auth/login';
@@ -415,6 +609,144 @@ export const inventoryApi = {
   // Inventory summary
   getInventorySummary: async (): Promise<any> => {
     const response = await api.get('/inventory/summary/');
+    return response.data;
+  },
+};
+
+// Market API Functions
+// Market API Functions (add to existing API object)
+export const marketApi = {
+  // Get marketplace products
+  getProducts: async (filters?: MarketFilter): Promise<PaginatedResponse<MarketProduct>> => {
+    const params = new URLSearchParams();
+    
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
+        }
+      });
+    }
+    
+    const url = params.toString() ? `/market/products/?${params.toString()}` : '/market/products/';
+    const response = await api.get<PaginatedResponse<MarketProduct>>(url);
+    return response.data;
+  },
+
+  // Get single product detail
+  getProductDetail: async (productId: number): Promise<MarketProduct> => {
+    const response = await api.get<MarketProduct>(`/market/products/${productId}/`);
+    return response.data;
+  },
+
+  // Get marketplace stats
+  getStats: async (): Promise<MarketplaceStats> => {
+    const response = await api.get<MarketplaceStats>('/market/stats/');
+    return response.data;
+  },
+
+  // Clear marketplace cache (admin only)
+  clearCache: async (): Promise<{ message: string }> => {
+    const response = await api.post<{ message: string }>('/market/clear-cache/');
+    return response.data;
+  },
+};
+
+// Order API Functions (add to existing API object)
+export const ordersApi = {
+  // Get orders list
+  getOrders: async (params?: URLSearchParams): Promise<PaginatedResponse<Order>> => {
+    const url = params ? `/orders/?${params.toString()}` : '/orders/';
+    const response = await api.get<PaginatedResponse<Order>>(url);
+    return response.data;
+  },
+
+  // Get single order
+  getOrder: async (id: number): Promise<Order> => {
+    const response = await api.get<Order>(`/orders/${id}/`);
+    return response.data;
+  },
+
+  // Create new order
+  createOrder: async (data: CreateOrderRequest): Promise<{ 
+    message: string; 
+    order: Order 
+  }> => {
+    const response = await api.post<{ message: string; order: Order }>('/orders/', data);
+    return response.data;
+  },
+
+  // Update order status
+  updateOrderStatus: async (id: number, data: {
+    status: string;
+    notes?: string;
+  }): Promise<{ message: string; order: Order }> => {
+    const response = await api.post<{ message: string; order: Order }>(`/orders/${id}/update_status/`, data);
+    return response.data;
+  },
+
+  // Cancel order
+  cancelOrder: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/orders/${id}/`);
+    return response.data;
+  },
+
+  // Get order status history
+  getOrderHistory: async (id: number): Promise<{
+    order_number: string;
+    current_status: string;
+    history: Array<{
+      id: number;
+      old_status?: string;
+      old_status_display?: string;
+      new_status: string;
+      new_status_display: string;
+      changed_by: {
+        id?: number;
+        name: string;
+        email?: string;
+      };
+      change_reason?: string;
+      notes?: string;
+      changed_at: string;
+    }>;
+  }> => {
+    const response = await api.get(`/orders/${id}/status_history/`);
+    return response.data;
+  },
+
+  // Get orders summary
+  getOrdersSummary: async (): Promise<{
+    total_orders: number;
+    total_amount: string;
+    currency: string;
+    status_distribution: Record<string, {
+      name: string;
+      count: number;
+      percentage: number;
+    }>;
+    recent_30_days: {
+      count: number;
+      amount: string;
+      average_order_value: string;
+    };
+  }> => {
+    const response = await api.get('/orders/summary/');
+    return response.data;
+  },
+
+  // Calculate cart (before placing order)
+  calculateCart: async (data: {
+    wholesaler_id: number;
+    items: CartItem[];
+  }): Promise<{ message: string; cart: CartCalculation }> => {
+    const response = await api.post<{ message: string; cart: CartCalculation }>('/orders/calculate-cart/', data);
+    return response.data;
+  },
+
+  // Get order statistics
+  getStatistics: async (): Promise<any> => {
+    const response = await api.get('/orders/statistics/');
     return response.data;
   },
 };

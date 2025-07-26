@@ -15,9 +15,11 @@ import {
   Bell,
   Search,
   Warehouse,
-  CreditCard
+  CreditCard,
+  Store
 } from 'lucide-react';
 import { useAuth, useAuthActions } from '@/store/authStore';
+import { useCart } from '@/store/cartStore'; // Yeni eklendi
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -36,9 +38,10 @@ const Layout: React.FC<LayoutProps> = ({
   const router = useRouter();
   const { user, company, isAuthenticated, hasMarketplaceAccess } = useAuth();
   const { logout } = useAuthActions();
+  const { totalItems } = useCart(); // Yeni eklendi
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
-  // Navigation items for authenticated users
+  // Navigation items for authenticated users - GÜNCELLENMIŞ
   const navigationItems = [
     {
       name: 'Dashboard',
@@ -48,16 +51,23 @@ const Layout: React.FC<LayoutProps> = ({
     },
     {
       name: 'Pazaryeri',
-      href: '/marketplace',
-      icon: ShoppingCart,
-      current: router.pathname.startsWith('/marketplace'),
+      href: '/dashboard/products', // Güncellendi
+      icon: Store, // Icon değiştirildi
+      current: router.pathname.startsWith('/dashboard/products'), // Güncellendi
       requiresMarketplace: true,
     },
     {
-      name: 'Siparişler',
-      href: '/orders',
+      name: 'Sepetim', // Yeni eklendi
+      href: '/cart',
+      icon: ShoppingCart,
+      current: router.pathname === '/cart',
+      showBadge: true,
+    },
+    {
+      name: 'Siparişlerim', // İsim güncellendi
+      href: '/dashboard/orders', // Güncellendi
       icon: Package,
-      current: router.pathname.startsWith('/orders'),
+      current: router.pathname.startsWith('/dashboard/orders'), // Güncellendi
     },
     {
       name: 'Stok Yönetimi',
@@ -133,7 +143,7 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation - GÜNCELLENMIŞ */}
       <nav className="flex-1 px-4 py-4 space-y-1">
         {navigationItems.map((item) => {
           const Icon = item.icon;
@@ -146,7 +156,7 @@ const Layout: React.FC<LayoutProps> = ({
               key={item.name}
               href={isAccessible ? item.href : '#'}
               className={cn(
-                "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative",
                 item.current
                   ? "bg-primary-100 text-primary-700"
                   : isAccessible
@@ -172,6 +182,14 @@ const Layout: React.FC<LayoutProps> = ({
                   : "text-gray-300"
               )} />
               {item.name}
+              
+              {/* Sepet Badge - YENİ EKLENDİ */}  
+              {item.showBadge && totalItems > 0 && (
+                <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[20px] h-5">
+                  {totalItems > 99 ? '99+' : totalItems}
+                </span>
+              )}
+              
               {!isAccessible && (
                 <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
                   Pro
@@ -233,6 +251,19 @@ const Layout: React.FC<LayoutProps> = ({
           <button className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full">
             <Bell className="h-6 w-6" />
           </button>
+
+          {/* Cart button for header - YENİ EKLENDİ */}
+          <Link 
+            href="/cart"
+            className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full"
+          >
+            <ShoppingCart className="h-6 w-6" />
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[18px] h-[18px]">
+                {totalItems > 99 ? '99+' : totalItems}
+              </span>
+            )}
+          </Link>
 
           {/* User menu */}
           <div className="relative">

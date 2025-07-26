@@ -1,20 +1,22 @@
-import React, { useEffect, ReactNode } from 'react';
+// frontend/src/components/auth/AuthGuard.tsx - TAM DÜZELTİLMİŞ DOSYA
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth, useAuthActions } from '@/store/authStore';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface AuthGuardProps {
-  children: ReactNode;
-  requireAuth?: boolean;
+  children: React.ReactNode;
   requireMarketplace?: boolean;
+  requireDynamicPricing?: boolean;
+  requireAuth?: boolean; // YENİ EKLENDİ
   redirectTo?: string;
 }
 
-const AuthGuard: React.FC<AuthGuardProps> = ({
-  children,
-  requireAuth = true,
+const AuthGuard: React.FC<AuthGuardProps> = ({ 
+  children, 
   requireMarketplace = false,
-  redirectTo,
+  requireDynamicPricing = false,
+  requireAuth = true, // YENİ EKLENDİ - Varsayılan true
+  redirectTo = '/auth/login' 
 }) => {
   const router = useRouter();
   const { 
@@ -22,83 +24,121 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     isAuthenticated, 
     isLoading, 
     isInitialized,
-    hasMarketplaceAccess 
+    hasMarketplaceAccess,
+    hasDynamicPricing
   } = useAuth();
   const { checkAuth } = useAuthActions();
 
   useEffect(() => {
-    // Initialize auth check if not already done
+    // Check auth on mount if not initialized
     if (!isInitialized && !isLoading) {
       checkAuth();
     }
   }, [isInitialized, isLoading, checkAuth]);
 
   useEffect(() => {
-    // Skip redirect logic during loading or before initialization
-    if (isLoading || !isInitialized) {
+    // Wait for initialization to complete
+    if (!isInitialized || isLoading) {
       return;
     }
 
-    // Handle authentication requirements
+    console.log('🔍 AuthGuard check:', {
+      requireAuth,
+      isAuthenticated,
+      requireMarketplace,
+      hasMarketplaceAccess,
+      currentPath: router.asPath
+    });
+
+    // YENİ: Eğer auth gerekli değilse ve user login olmamışsa, children'ı render et
+    if (!requireAuth && !isAuthenticated) {
+      console.log('✅ Auth not required and user not authenticated - render children');
+      return;
+    }
+
+    // YENİ: Eğer auth gerekli değilse ve user login olmışsa, dashboard'a yönlendir
+    if (!requireAuth && isAuthenticated) {
+      console.log('🔄 Auth not required but user authenticated - redirect to dashboard');
+      router.replace('/dashboard');
+      return;
+    }
+
+    // ESKİ MANTIK: Auth gerekli ve user login olmamışsa, login'e yönlendir
     if (requireAuth && !isAuthenticated) {
-      const returnUrl = router.asPath;
-      const loginUrl = redirectTo || `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}`;
+      console.log('🔄 Auth required but user not authenticated - redirect to login');
+      const currentPath = router.asPath;
+      const loginUrl = `${redirectTo}?redirect=${encodeURIComponent(currentPath)}`;
       router.replace(loginUrl);
       return;
     }
 
-    // Handle marketplace access requirements
-    if (requireMarketplace && isAuthenticated && !hasMarketplaceAccess) {
-      router.replace('/dashboard?error=marketplace_access_required');
+    // Check marketplace access requirement
+    if (requireMarketplace && !hasMarketplaceAccess) {
+      console.warn('⚠️ Marketplace access required but not available');
       return;
     }
 
-    // Handle already authenticated users trying to access auth pages
-    if (!requireAuth && isAuthenticated) {
-      const returnUrl = router.query.returnUrl as string;
-      const dashboardUrl = returnUrl && returnUrl !== '/auth/login' && returnUrl !== '/auth/register' 
-        ? returnUrl 
-        : '/dashboard';
-      router.replace(dashboardUrl);
+    // Check dynamic pricing requirement
+    if (requireDynamicPricing && !hasDynamicPricing) {
+      console.warn('⚠️ Dynamic pricing access required but not available');
       return;
     }
+
   }, [
-    isAuthenticated,
-    isLoading,
-    isInitialized,
-    requireAuth,
-    requireMarketplace,
+    isInitialized, 
+    isLoading, 
+    isAuthenticated, 
     hasMarketplaceAccess,
-    router,
-    redirectTo,
+    hasDynamicPricing,
+    requireAuth, // YENİ EKLENDİ
+    requireMarketplace, 
+    requireDynamicPricing,
+    router, 
+    redirectTo
   ]);
 
-  // Show loading spinner during initialization or auth checks
-  if (isLoading || !isInitialized) {
+  // Show loading spinner while checking auth
+  if (!isInitialized || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600">Yükleniyor...</p>
+          <div className="spinner h-8 w-8 mx-auto mb-4"></div>
+          <p className="text-gray-600">Yükleniyor...</p>
         </div>
       </div>
     );
   }
 
-  // Don't render children if auth requirements are not met
-  if (requireAuth && !isAuthenticated) {
-    return null;
+  // YENİ: Auth gerekli değil ve user login olmamış - children render et
+  if (!requireAuth && !isAuthenticated) {
+    return <>{children}</>;
   }
 
-  if (requireMarketplace && !hasMarketplaceAccess) {
-    return null;
-  }
-
-  // Don't render auth pages if user is already authenticated
+  // YENİ: Auth gerekli değil ama user login olmuş - yönlendirme ekranı göster
   if (!requireAuth && isAuthenticated) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="spinner h-8 w-8 mx-auto mb-4"></div>
+          <p className="text-gray-600">Dashboard'a yönlendiriliyor...</p>
+        </div>
+      </div>
+    );
   }
 
+  // ESKİ MANTIK: Auth gerekli ama user login olmamış - yönlendirme ekranı
+  if (requireAuth && !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="spinner h-8 w-8 mx-auto mb-4"></div>
+          <p className="text-gray-600">Giriş sayfasına yönlendiriliyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ESKİ MANTIK: Tüm kontroller geçti - children render et
   return <>{children}</>;
 };
 

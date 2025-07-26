@@ -44,12 +44,14 @@ services:
     container_name: tyrex_frontend
     volumes:
       - ./frontend:/app
-      - /app/node_modules  # Node modules'ı container'da tut
+      - /app/node_modules
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
     depends_on:
       - backend
     networks:
