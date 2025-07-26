@@ -193,7 +193,28 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=7),
 }
 
-if DEBUG:
+ENABLE_DEBUG_TOOLBAR = os.environ.get("ENABLE_DEBUG_TOOLBAR", "False").lower() in ("true", "1", "t")
+
+if DEBUG and ENABLE_DEBUG_TOOLBAR:
+    # Debug Toolbar ayarları
+    INSTALLED_APPS += [
+        'debug_toolbar',
+    ]
+    
+    MIDDLEWARE += [
+        'debug_toolbar.middleware.DebugToolbarMiddleware',
+    ]
+    
+    # Debug Toolbar Ayarları
+    INTERNAL_IPS = [
+        "127.0.0.1",
+    ]
+    
+    DEBUG_TOOLBAR_CONFIG = {
+        'SHOW_TOOLBAR_CALLBACK': lambda request: True,
+        'RENDER_PANELS': False,  # Panel'ları daha hızlı render et
+    }
+    
     # Debug toolbar panels
     DEBUG_TOOLBAR_PANELS = [
         'debug_toolbar.panels.history.HistoryPanel',
@@ -211,10 +232,14 @@ if DEBUG:
         'debug_toolbar.panels.redirects.RedirectsPanel',
         'debug_toolbar.panels.profiling.ProfilingPanel',
     ]
+
+# Eğer debug toolbar aktif değilse, INSTALLED_APPS ve MIDDLEWARE'den çıkar
+else:
+    # Debug toolbar'dan kalan ayarları temizle
+    if 'debug_toolbar' in INSTALLED_APPS:
+        INSTALLED_APPS.remove('debug_toolbar')
     
-    DEBUG_TOOLBAR_CONFIG = {
-        'SHOW_TOOLBAR_CALLBACK': lambda request: True,  # Her zaman göster
-    }
+    MIDDLEWARE = [m for m in MIDDLEWARE if 'debug_toolbar' not in m]
 
 # Logging configuration (isteğe bağlı):
 LOGGING = {

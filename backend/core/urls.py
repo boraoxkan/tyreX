@@ -11,11 +11,16 @@ urlpatterns = [
     path('api/v1/', include('users.urls')),
     path('api/v1/inventory/', include('inventory.urls')),
     path('api/v1/market/', include('market.urls')),
-    path('api/v1/', include('orders.urls')),  # YENİ EKLENDİ
+    path('api/v1/', include('orders.urls')),
 ]
 
-# Debug Toolbar URL'ini sadece DEBUG=True iken ekle
-if settings.DEBUG:
-    urlpatterns += [
-        path('__debug__/', include('debug_toolbar.urls')),
-    ]
+# Debug Toolbar URL'ini sadece DEBUG=True ve ENABLE_DEBUG_TOOLBAR=True iken ekle
+if settings.DEBUG and getattr(settings, 'ENABLE_DEBUG_TOOLBAR', False):
+    try:
+        import debug_toolbar
+        urlpatterns += [
+            path('__debug__/', include(debug_toolbar.urls)),
+        ]
+    except ImportError:
+        # Debug toolbar kurulu değilse sessizce geç
+        pass

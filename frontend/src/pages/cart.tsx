@@ -1,27 +1,24 @@
 // frontend/src/pages/cart.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { 
   ShoppingCart, 
+  Trash2, 
   Plus, 
   Minus, 
-  Trash2, 
-  Package, 
-  CreditCard,
-  Truck,
-  User,
-  Phone,
-  MapPin,
+  ArrowRight,
+  ArrowLeft,
+  Package,
   AlertCircle,
   CheckCircle,
-  ArrowLeft
+  Loader2
 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import AuthGuard from '@/components/auth/AuthGuard';
 import { useCart, useCartActions } from '@/store/cartStore';
-import { ordersApi, handleApiError } from '@/lib/api';
+import { ordersApi, handleApiError, CreateOrderRequest } from '@/lib/api';
 
 const CartPage: React.FC = () => {
   const router = useRouter();
@@ -34,19 +31,21 @@ const CartPage: React.FC = () => {
     cartCalculation,
     isCalculating,
     calculationError,
+    totalItems,
+    totalUniqueProducts,
     hasItems,
     canCheckout
   } = useCart();
   
-  const { 
-    updateQuantity, 
-    removeItem, 
-    clearCart, 
-    calculateCart 
+  const {
+    updateQuantity,
+    removeItem,
+    clearCart,
+    calculateCart
   } = useCartActions();
 
   // Component state
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [deliveryInfo, setDeliveryInfo] = useState({
     address: '',
@@ -55,92 +54,84 @@ const CartPage: React.FC = () => {
     notes: ''
   });
 
-  // Calculate cart on mount and when items change
+  // Calculate cart on mount
   useEffect(() => {
     if (hasItems && selectedWholesalerId) {
-        calculateCart();
+      calculateCart();
     }
-  }, [hasItems, selectedWholesalerId]);
+  }, []);
+
+  const formatPrice = (price: string) => {
+    return `₺${parseFloat(price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
+  };
 
   const handleQuantityChange = (productId: number, newQuantity: number) => {
-    if (newQuantity > 0) {
-      updateQuantity(productId, newQuantity);
+    if (newQuantity < 1) {
+      handleRemoveItem(productId);
+      return;
     }
+    updateQuantity(productId, newQuantity);
   };
 
   const handleRemoveItem = (productId: number) => {
     removeItem(productId);
   };
 
-  const handleDeliveryChange = (field: keyof typeof deliveryInfo, value: string) => {
-    setDeliveryInfo(prev => ({ ...prev, [field]: value }));
-  };
-
-  // 2. handleCheckout fonksiyonunu debug edin (yaklaşık 55. satır civarında):
-  const handleCheckout = async () => {
-    console.log('🛒 Checkout clicked!', {
-        canCheckout,
-        selectedWholesalerId,
-        items: items.length,
-        cartCalculation: !!cartCalculation
+  const handlePlaceOrder = async () => {
+    console.log('🛒 Place order clicked', {
+      canCheckout,
+      cartCalculation: !!cartCalculation,
+      selectedWholesalerId,
+      deliveryAddress: deliveryInfo.address.trim(),
+      itemsCount: items.length
     });
 
-    if (!canCheckout || !selectedWholesalerId) {
-        console.error('❌ Cannot checkout:', { canCheckout, selectedWholesalerId });
-        setOrderError('Sipariş verilemez. Lütfen sepetinizi kontrol edin.');
-        return;
+    if (!canCheckout || !cartCalculation) {
+      console.warn('❌ Cannot checkout:', { canCheckout, cartCalculation: !!cartCalculation });
+      setOrderError('Sipariş verilemez. Sepet hesaplaması tamamlanmadı.');
+      return;
+    }
+
+    if (!deliveryInfo.address.trim()) {
+      setOrderError('Teslimat adresi zorunludur.');
+      return;
     }
 
     try {
-        setIsSubmitting(true);
-        setOrderError(null);
-        
-        console.log('📤 Creating order...');
+      setIsPlacingOrder(true);
+      setOrderError(null);
 
-        // Prepare order data
-        const orderData = {
-        wholesaler_id: selectedWholesalerId,
+      const orderData: CreateOrderRequest = {
+        wholesaler_id: selectedWholesalerId!,
         items: items.map(item => ({
-            product_id: item.id,
-            quantity: item.quantity
+          product_id: item.id,
+          quantity: item.quantity
         })),
-        delivery_address: deliveryInfo.address,
-        delivery_contact: deliveryInfo.contact,
-        delivery_phone: deliveryInfo.phone,
-        notes: deliveryInfo.notes
-        };
+        delivery_address: deliveryInfo.address.trim(),
+        delivery_contact: deliveryInfo.contact.trim(),
+        delivery_phone: deliveryInfo.phone.trim(),
+        notes: deliveryInfo.notes.trim()
+      };
 
-        console.log('📋 Order data:', orderData);
+      console.log('📤 Sending order data:', orderData);
 
-        const response = await ordersApi.createOrder(orderData);
-        
-        console.log('✅ Order created successfully:', response);
-
-        // Clear cart on success
-        clearCart();
-
-        // Redirect to orders page with success message
-        router.push({
-        pathname: '/dashboard/orders',
-        query: { 
-            success: 'true', 
-            orderNumber: response.order.order_number 
-        }
-        });
-
+      const response = await ordersApi.createOrder(orderData);
+      
+      console.log('✅ Order created successfully:', response);
+      
+      // Clear cart after successful order
+      clearCart();
+      
+      // Redirect to orders page with success message
+      router.push(`/dashboard/orders?success=1&orderNumber=${response.order.order_number}`);
+      
     } catch (error: any) {
-        const errorMessage = handleApiError(error);
-        setOrderError(errorMessage);
-        console.error('❌ Order creation failed:', error);
-        console.error('❌ Error message:', errorMessage);
+      const errorMessage = handleApiError(error);
+      setOrderError(errorMessage);
+      console.error('❌ Order placement failed:', errorMessage, error);
     } finally {
-        setIsSubmitting(false);
+      setIsPlacingOrder(false);
     }
-  };
-
-  const formatPrice = (price: string | undefined) => {
-    if (!price) return '₺0,00';
-    return `₺${parseFloat(price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
   };
 
   // Empty cart state
@@ -149,7 +140,9 @@ const CartPage: React.FC = () => {
       <AuthGuard>
         <Head>
           <title>Sepetim - Tyrex B2B</title>
+          <meta name="description" content="Alışveriş sepetiniz" />
         </Head>
+
         <Layout title="Sepetim">
           <div className="text-center py-20">
             <ShoppingCart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -160,6 +153,7 @@ const CartPage: React.FC = () => {
               Pazaryerinden ürün ekleyerek alışverişe başlayın.
             </p>
             <Link href="/dashboard/products" className="btn btn-primary">
+              <Package className="h-5 w-5 mr-2" />
               Pazaryerine Git
             </Link>
           </div>
@@ -171,305 +165,283 @@ const CartPage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Sepetim ({items.length} ürün) - Tyrex B2B</title>
+        <title>Sepetim ({totalItems}) - Tyrex B2B</title>
+        <meta name="description" content="Alışveriş sepetiniz" />
       </Head>
-      
-      <Layout title="Sepetim">
+
+      <Layout title={`Sepetim (${totalItems} ürün)`}>
         <div className="max-w-6xl mx-auto space-y-6">
-          {/* Back to Products */}
-          <div className="flex items-center">
-            <Link 
-              href="/dashboard/products" 
-              className="inline-flex items-center text-primary-600 hover:text-primary-700"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Alışverişe Devam Et
-            </Link>
-          </div>
+          {/* Breadcrumb */}
+          <nav className="flex" aria-label="Breadcrumb">
+            <ol className="inline-flex items-center space-x-1 md:space-x-3">
+              <li>
+                <Link href="/dashboard/products" className="text-gray-500 hover:text-gray-700">
+                  Pazaryeri
+                </Link>
+              </li>
+              <li>
+                <ArrowRight className="h-4 w-4 text-gray-400" />
+              </li>
+              <li className="text-gray-900 font-medium">Sepetim</li>
+            </ol>
+          </nav>
+
+          {/* Error Messages */}
+          {calculationError && (
+            <div className="alert alert-error">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              {calculationError}
+            </div>
+          )}
+
+          {orderError && (
+            <div className="alert alert-error">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              {orderError}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
+              {/* Wholesaler Info */}
+              {selectedWholesalerName && (
+                <div className="card">
+                  <div className="card-body">
+                    <h3 className="font-medium text-gray-900 mb-2">Toptancı</h3>
+                    <p className="text-sm text-gray-600">{selectedWholesalerName}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Items List */}
               <div className="card">
                 <div className="card-header">
-                  <h2 className="text-lg font-medium text-gray-900">
-                    Sepetinizdeki Ürünler ({items.length})
-                  </h2>
-                  {selectedWholesalerName && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      Toptancı: {selectedWholesalerName}
-                    </p>
-                  )}
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Sepet İçeriği ({totalUniqueProducts} ürün)
+                    </h3>
+                    <button
+                      onClick={clearCart}
+                      className="text-red-600 hover:text-red-800 text-sm"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1 inline" />
+                      Sepeti Temizle
+                    </button>
+                  </div>
                 </div>
-                
                 <div className="card-body p-0">
-                  <div className="space-y-4">
+                  <div className="divide-y divide-gray-200">
                     {items.map((item) => (
-                      <div key={item.id} className="flex items-center space-x-4 p-4 border-b border-gray-200 last:border-b-0">
-                        {/* Product Info */}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-medium text-gray-900 truncate">
-                            {item.name}
-                          </h3>
-                          <div className="mt-1 space-y-1">
+                      <div key={item.id} className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="text-sm font-medium text-gray-900 mb-1">
+                              {item.name}
+                            </h4>
                             {item.brand && (
-                              <p className="text-xs text-gray-500">Marka: {item.brand}</p>
+                              <p className="text-xs text-gray-500 mb-1">{item.brand}</p>
                             )}
-                            <p className="text-xs text-gray-500">SKU: {item.sku}</p>
-                            {item.wholesaler_info && (
-                              <p className="text-xs text-gray-600">
-                                {item.wholesaler_info.name}
-                              </p>
-                            )}
-                          </div>
-                          
-                          {/* Price Info */}
-                          <div className="mt-2">
-                            {item.final_price && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm font-medium text-gray-900">
-                                  {formatPrice(item.final_price)}
-                                </span>
-                                {item.discount_percentage > 0 && (
-                                  <>
-                                    <span className="text-xs text-gray-500 line-through">
-                                      {formatPrice(item.base_price)}
-                                    </span>
-                                    <span className="text-xs font-medium text-green-600">
-                                      %{item.discount_percentage.toFixed(1)} indirim
-                                    </span>
-                                  </>
-                                )}
+                            <p className="text-xs text-gray-400">SKU: {item.sku}</p>
+                            
+                            {/* Price info */}
+                            <div className="mt-2">
+                              {item.base_price && item.final_price && item.discount_percentage > 0 && (
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-gray-500 line-through">
+                                    {formatPrice(item.base_price)}
+                                  </span>
+                                  <span className="text-xs text-green-600 font-medium">
+                                    %{item.discount_percentage.toFixed(1)} indirim
+                                  </span>
+                                </div>
+                              )}
+                              <div className="text-sm font-medium text-gray-900">
+                                {formatPrice(item.final_price || '0')}
                               </div>
-                            )}
+                            </div>
+                          </div>
+
+                          {/* Quantity Controls */}
+                          <div className="flex items-center space-x-3">
+                            <div className="flex items-center border border-gray-300 rounded-md">
+                              <button
+                                onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                className="p-1 hover:bg-gray-100 rounded-l-md"
+                                disabled={item.quantity <= 1}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <span className="px-3 py-1 text-sm font-medium">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                                className="p-1 hover:bg-gray-100 rounded-r-md"
+                                disabled={item.quantity >= item.available_stock}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+
+                            <button
+                              onClick={() => handleRemoveItem(item.id)}
+                              className="text-red-600 hover:text-red-800 p-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
 
-                        {/* Quantity Controls */}
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                            className="p-1 rounded-full hover:bg-gray-100"
-                            disabled={item.quantity <= 1}
-                          >
-                            <Minus className="h-4 w-4 text-gray-600" />
-                          </button>
-                          
-                          <span className="w-12 text-center text-sm font-medium">
-                            {item.quantity}
-                          </span>
-                          
-                          <button
-                            onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                            className="p-1 rounded-full hover:bg-gray-100"
-                            disabled={item.quantity >= item.available_stock}
-                          >
-                            <Plus className="h-4 w-4 text-gray-600" />
-                          </button>
-                        </div>
-
-                        {/* Item Total */}
-                        <div className="text-right">
-                          <div className="text-sm font-medium text-gray-900">
-                            {formatPrice(
-                              item.final_price 
-                                ? (parseFloat(item.final_price) * item.quantity).toFixed(2)
-                                : '0'
-                            )}
+                        {/* Stock warning */}
+                        {item.quantity >= item.available_stock && (
+                          <div className="mt-2 text-xs text-amber-600">
+                            ⚠️ Maksimum stok: {item.available_stock} adet
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {item.quantity} × {formatPrice(item.final_price)}
-                          </div>
-                        </div>
-
-                        {/* Remove Button */}
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-full"
-                          title="Sepetten Çıkar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Delivery Information */}
-              <div className="card">
+            {/* Checkout Summary */}
+            <div className="lg:col-span-1">
+              <div className="card sticky top-6">
                 <div className="card-header">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Teslimat Bilgileri
-                  </h3>
+                  <h3 className="text-lg font-medium text-gray-900">Sipariş Özeti</h3>
                 </div>
                 <div className="card-body space-y-4">
-                  <div>
-                    <label className="form-label">
-                      <MapPin className="h-4 w-4 inline mr-1" />
-                      Teslimat Adresi
-                    </label>
-                    <textarea
-                      className="form-input"
-                      rows={3}
-                      placeholder="Teslimat adresini girin..."
-                      value={deliveryInfo.address}
-                      onChange={(e) => handleDeliveryChange('address', e.target.value)}
-                    />
-                  </div>
+                  {/* Loading state */}
+                  {isCalculating && (
+                    <div className="text-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">Hesaplanıyor...</p>
+                    </div>
+                  )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Cart calculation */}
+                  {cartCalculation && !isCalculating && (
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span>Ara Toplam:</span>
+                        <span>{formatPrice(cartCalculation.subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Para Birimi:</span>
+                        <span>{cartCalculation.currency}</span>
+                      </div>
+                      <div className="border-t pt-3">
+                        <div className="flex justify-between text-lg font-medium">
+                          <span>Toplam:</span>
+                          <span>{formatPrice(cartCalculation.total_amount)}</span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {cartCalculation.total_items} adet • {cartCalculation.unique_products} farklı ürün
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Delivery Info */}
+                  <div className="space-y-3 pt-4 border-t">
+                    <h4 className="font-medium text-gray-900">Teslimat Bilgileri</h4>
+                    
                     <div>
-                      <label className="form-label">
-                        <User className="h-4 w-4 inline mr-1" />
-                        İletişim Kişisi
-                      </label>
+                      <label className="form-label">Teslimat Adresi</label>
+                      <textarea
+                        rows={3}
+                        className="form-input"
+                        placeholder="Teslimat adresinizi girin..."
+                        value={deliveryInfo.address}
+                        onChange={(e) => setDeliveryInfo(prev => ({ ...prev, address: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">İletişim Kişisi</label>
                       <input
                         type="text"
                         className="form-input"
                         placeholder="Ad Soyad"
                         value={deliveryInfo.contact}
-                        onChange={(e) => handleDeliveryChange('contact', e.target.value)}
+                        onChange={(e) => setDeliveryInfo(prev => ({ ...prev, contact: e.target.value }))}
                       />
                     </div>
 
                     <div>
-                      <label className="form-label">
-                        <Phone className="h-4 w-4 inline mr-1" />
-                        Telefon
-                      </label>
+                      <label className="form-label">Telefon</label>
                       <input
                         type="tel"
                         className="form-input"
-                        placeholder="0555 123 45 67"
+                        placeholder="+90 5XX XXX XX XX"
                         value={deliveryInfo.phone}
-                        onChange={(e) => handleDeliveryChange('phone', e.target.value)}
+                        onChange={(e) => setDeliveryInfo(prev => ({ ...prev, phone: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">Sipariş Notu (Opsiyonel)</label>
+                      <textarea
+                        rows={2}
+                        className="form-input"
+                        placeholder="Özel talimatlarınız..."
+                        value={deliveryInfo.notes}
+                        onChange={(e) => setDeliveryInfo(prev => ({ ...prev, notes: e.target.value }))}
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="form-label">Sipariş Notları (Opsiyonel)</label>
-                    <textarea
-                      className="form-input"
-                      rows={2}
-                      placeholder="Özel notlarınız..."
-                      value={deliveryInfo.notes}
-                      onChange={(e) => handleDeliveryChange('notes', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Order Summary */}
-            <div className="lg:col-span-1">
-              <div className="card sticky top-6">
-                <div className="card-header">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Sipariş Özeti
-                  </h3>
-                </div>
-                
-                <div className="card-body space-y-4">
-                  {/* Calculation Loading */}
-                  {isCalculating && (
-                    <div className="text-center py-4">
-                      <div className="spinner h-6 w-6 mx-auto mb-2"></div>
-                      <p className="text-sm text-gray-600">Hesaplanıyor...</p>
-                    </div>
-                  )}
-
-                  {/* Calculation Error */}
-                  {calculationError && (
-                    <div className="alert alert-error">
-                      <AlertCircle className="h-4 w-4 mr-2" />
-                      <div>
-                        <p className="text-sm">{calculationError}</p>
-                        <button 
-                          onClick={calculateCart}
-                          className="mt-2 btn btn-sm btn-outline"
-                        >
-                          Tekrar Hesapla
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Cart Calculation */}
-                  {cartCalculation && (
-                    <>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Ara Toplam:</span>
-                          <span>{formatPrice(cartCalculation.subtotal)}</span>
-                        </div>
-                        
-                        <div className="flex justify-between text-sm text-green-600">
-                          <span>Toplam İndirim:</span>
-                          <span>
-                            -{formatPrice(
-                              cartCalculation.items.reduce((total, item) => {
-                                const savings = parseFloat(item.wholesaler_reference_price) - parseFloat(item.unit_price);
-                                return total + (savings * item.quantity);
-                              }, 0).toFixed(2)
-                            )}
-                          </span>
-                        </div>
-                        
-                        <hr className="border-gray-200" />
-                        
-                        <div className="flex justify-between text-lg font-semibold">
-                          <span>Toplam:</span>
-                          <span>{formatPrice(cartCalculation.total_amount)}</span>
-                        </div>
-                      </div>
-
-                      <div className="text-xs text-gray-500 space-y-1">
-                        <p>• {cartCalculation.total_items} adet ürün</p>
-                        <p>• {cartCalculation.unique_products} farklı ürün</p>
-                        <p>• Para birimi: {cartCalculation.currency}</p>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Order Error */}
-                  {orderError && (
-                    <div className="alert alert-error">
-                      <AlertCircle className="h-4 w-4 mr-2" />
-                      {orderError}
-                    </div>
-                  )}
-
                   {/* Checkout Button */}
-                  <button
-                    onClick={handleCheckout}
-                    disabled={!canCheckout || isSubmitting || isCalculating}
-                    className={`btn w-full ${
-                        !canCheckout || isSubmitting || isCalculating 
-                        ? 'btn-secondary cursor-not-allowed opacity-50' 
-                        : 'btn-primary hover:bg-primary-700'
-                    }`}
-                    type="button" // Explicit type
+                  <div className="space-y-3 pt-4 border-t">
+                    {/* Debug Info - Geçici */}
+                    <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
+                      Debug: canCheckout={String(canCheckout)} | 
+                      hasCalc={String(!!cartCalculation)} | 
+                      hasAddr={String(!!deliveryInfo.address.trim())} |
+                      placing={String(isPlacingOrder)}
+                    </div>
+
+                    <button
+                      onClick={handlePlaceOrder}
+                      disabled={!canCheckout || isPlacingOrder || !deliveryInfo.address.trim()}
+                      className={`btn w-full ${
+                        (!canCheckout || isPlacingOrder || !deliveryInfo.address.trim())
+                          ? 'btn-secondary cursor-not-allowed opacity-50'
+                          : 'btn-primary hover:bg-primary-700'
+                      }`}
                     >
-                    {isSubmitting ? (
+                      {isPlacingOrder ? (
                         <>
-                        <div className="spinner h-4 w-4 mr-2"></div>
-                        Sipariş Veriliyor...
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Sipariş Veriliyor...
                         </>
-                    ) : (
+                      ) : (
                         <>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Siparişi Ver
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Siparişi Tamamla
                         </>
+                      )}
+                    </button>
+
+                    {/* Validation Messages */}
+                    {!canCheckout && (
+                      <p className="text-xs text-red-600">
+                        ⚠️ Sepet hesaplanması tamamlanmadı
+                      </p>
                     )}
-                  </button>
+                    
+                    {!deliveryInfo.address.trim() && (
+                      <p className="text-xs text-red-600">
+                        ⚠️ Teslimat adresi gerekli
+                      </p>
+                    )}
 
-
-                  <div className="text-xs text-gray-500 text-center space-y-1">
-                    <p>• Siparişiniz vereceğiniz anda toptancıya iletilecektir</p>
-                    <p>• Toptancı onayladıktan sonra hazırlanmaya başlayacaktır</p>
-                    <p>• Sipariş durumunu "Siparişlerim" sayfasından takip edebilirsiniz</p>
+                    <Link href="/dashboard/products" className="btn btn-outline w-full">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Alışverişe Devam Et
+                    </Link>
                   </div>
                 </div>
               </div>

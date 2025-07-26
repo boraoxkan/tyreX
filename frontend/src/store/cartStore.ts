@@ -1,4 +1,4 @@
-// frontend/src/store/cartStore.ts
+// frontend/src/store/cartStore.ts - DÜZELTILMIŞ VERSİYON
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { MarketProduct, CartCalculation, ordersApi, handleApiError } from '@/lib/api';
@@ -70,7 +70,7 @@ export const useCartStore = create<CartState>()(
         
         // Auto-calculate cart if wholesaler is selected
         if (get().selectedWholesalerId) {
-          get().calculateCart();
+          setTimeout(() => get().calculateCart(), 100);
         }
       },
 
@@ -90,7 +90,7 @@ export const useCartStore = create<CartState>()(
           });
         } else if (get().selectedWholesalerId) {
           // Recalculate if items remain
-          get().calculateCart();
+          setTimeout(() => get().calculateCart(), 100);
         }
         
         console.log(`❌ Removed product ${productId} from cart`);
@@ -112,7 +112,7 @@ export const useCartStore = create<CartState>()(
         
         // Auto-calculate if wholesaler selected
         if (get().selectedWholesalerId) {
-          get().calculateCart();
+          setTimeout(() => get().calculateCart(), 100);
         }
         
         console.log(`🔄 Updated product ${productId} quantity to ${quantity}`);
@@ -140,7 +140,7 @@ export const useCartStore = create<CartState>()(
         });
         
         // Auto-calculate cart
-        get().calculateCart();
+        setTimeout(() => get().calculateCart(), 100);
         
         console.log(`🏪 Selected wholesaler: ${wholesalerName} (${wholesalerId})`);
       },
@@ -149,7 +149,13 @@ export const useCartStore = create<CartState>()(
       calculateCart: async () => {
         const { items, selectedWholesalerId } = get();
         
+        console.log('🧮 Calculate cart called:', { 
+          itemsCount: items.length, 
+          wholesalerId: selectedWholesalerId 
+        });
+        
         if (!selectedWholesalerId || items.length === 0) {
+          console.log('⚠️ Cannot calculate: no wholesaler or no items');
           set({ cartCalculation: null, calculationError: null });
           return;
         }
@@ -159,7 +165,13 @@ export const useCartStore = create<CartState>()(
           item.wholesaler_info?.id === selectedWholesalerId
         );
         
+        console.log('🏪 Wholesaler items:', { 
+          totalItems: items.length, 
+          wholesalerItems: wholesalerItems.length 
+        });
+        
         if (wholesalerItems.length === 0) {
+          console.log('⚠️ No items for selected wholesaler');
           set({ cartCalculation: null, calculationError: null });
           return;
         }
@@ -174,6 +186,8 @@ export const useCartStore = create<CartState>()(
               quantity: item.quantity
             }))
           };
+          
+          console.log('📡 Sending cart data to API:', cartData);
           
           const response = await ordersApi.calculateCart(cartData);
           
@@ -194,7 +208,10 @@ export const useCartStore = create<CartState>()(
             calculationError: errorMessage
           });
           
-          console.error('❌ Cart calculation failed:', errorMessage);
+          console.error('❌ Cart calculation failed:', {
+            error: errorMessage,
+            originalError: error
+          });
         }
       },
 
@@ -220,13 +237,27 @@ export const useCartStore = create<CartState>()(
         return get().items.length > 0;
       },
 
+      // DÜZELTILMIŞ: Check if can checkout
       // Check if can checkout
       canCheckout: () => {
         const { items, selectedWholesalerId, cartCalculation } = get();
-        return items.length > 0 && 
+        
+        const result = items.length > 0 && 
                selectedWholesalerId !== null && 
                cartCalculation !== null &&
+               cartCalculation.total_amount !== '0.00' &&
                parseFloat(cartCalculation.total_amount) > 0;
+        
+        console.log('🔍 canCheckout check:', {
+          hasItems: items.length > 0,
+          hasWholesaler: selectedWholesalerId !== null,
+          hasCalculation: cartCalculation !== null,
+          totalAmount: cartCalculation?.total_amount,
+          totalAmountFloat: cartCalculation ? parseFloat(cartCalculation.total_amount) : 0,
+          result
+        });
+        
+        return result;
       },
     }),
     {
@@ -242,7 +273,7 @@ export const useCartStore = create<CartState>()(
   )
 );
 
-// Helper hooks
+// DÜZELTILMIŞ Helper hooks
 export const useCart = () => {
   const {
     items,
@@ -251,6 +282,7 @@ export const useCart = () => {
     cartCalculation,
     isCalculating,
     calculationError,
+    canCheckout: storeCanCheckout,
   } = useCartStore();
 
   return {
@@ -263,10 +295,7 @@ export const useCart = () => {
     totalItems: items.reduce((total, item) => total + item.quantity, 0),
     totalUniqueProducts: items.length,
     hasItems: items.length > 0,
-    canCheckout: items.length > 0 && 
-                 selectedWholesalerId !== null && 
-                 cartCalculation !== null &&
-                 cartCalculation.total_amount !== '0.00',
+    canCheckout: storeCanCheckout(), // Fonksiyon çağırarak güncel değeri al
   };
 };
 
