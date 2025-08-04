@@ -191,7 +191,7 @@ class OrderCreateSerializer(serializers.Serializer):
         return value
     
     def validate(self, attrs):
-        """Genel validasyon - tüm ürünlerin aynı toptancıdan olmasını kontrol et"""
+        """Genel validasyon - ürünlerin stok kontrolü"""
         wholesaler_id = attrs['wholesaler_id']
         
         # Her bir item için stok kontrolü ve fiyat hesaplama
@@ -205,11 +205,8 @@ class OrderCreateSerializer(serializers.Serializer):
             
             stock_item = item_serializer.validated_data['stock_item']
             
-            # Stok kaleminin belirtilen toptancıya ait olduğunu kontrol et
-            if stock_item.warehouse.company_id != wholesaler_id:
-                raise serializers.ValidationError(
-                    f'{stock_item.product.name} ürünü belirtilen toptancıda mevcut değil.'
-                )
+            # Not: Artık farklı toptancılardan ürünlere izin veriyoruz
+            # En uygun fiyatlı stok kalemini kullanacağız
             
             validated_items.append({
                 **item_serializer.validated_data,
@@ -562,28 +559,29 @@ class CartCalculationSerializer(serializers.Serializer):
             product = Product.objects.get(id=item_data['product_id'])
             quantity = item_data['quantity']
             
-            # En iyi stok kalemini bul
+            # En iyi stok kalemini bul (tüm aktif warehouse'lardan)
             stock_items = StockItem.objects.filter(
                 product=product,
-                warehouse__company=wholesaler,
                 is_active=True,
                 is_sellable=True,
                 quantity__gte=quantity,
-                sale_price__isnull=False
-            ).order_by('sale_price')
+                sale_price__isnull=False,
+                warehouse__is_active=True
+            ).select_related('warehouse', 'warehouse__company').order_by('sale_price')
             
             if not stock_items.exists():
                 continue
             
             stock_item = stock_items.first()
+            actual_wholesaler = stock_item.warehouse.company
             
-            # Fiyat hesaplama (aynı mantık)
+            # Fiyat hesaplama (gerçek toptancıya göre)
             base_price = stock_item.sale_price
             
             try:
                 relationship = RetailerWholesaler.objects.get(
                     retailer=retailer,
-                    wholesaler=wholesaler,
+                    wholesaler=actual_wholesaler,
                     is_active=True
                 )
                 
@@ -632,10 +630,28 @@ class CartCalculationSerializer(serializers.Serializer):
                 }
             })
         
+        # Eğer hiç item yoksa genel wholesaler bilgisi kullan
+        if not cart_items:
+            return {
+                'wholesaler': {
+                    'id': wholesaler.id,
+                    'name': wholesaler.name
+                },
+                'items': [],
+                'subtotal': '0.00',
+                'total_amount': '0.00',
+                'currency': 'TRY',
+                'total_items': 0,
+                'unique_products': 0
+            }
+        
+        # Mixed wholesaler - ilk item'in wholesaler'ını kullan
+        first_item_wholesaler = cart_items[0]['warehouse']
+        
         return {
             'wholesaler': {
-                'id': wholesaler.id,
-                'name': wholesaler.name
+                'id': wholesaler.id,  # API'den gelen original 
+                'name': f"Karışık Toptancılar"  # Mixed wholesalers
             },
             'items': cart_items,
             'subtotal': str(total),

@@ -43,15 +43,26 @@ export const useCartStore = create<CartState>()(
       calculationError: null,
 
       // Add item to cart
+       // Add item to cart
       addItem: (product: MarketProduct, quantity = 1) => {
+        const { items, selectedWholesalerId, clearCart, updateQuantity, setWholesaler } = get();
+        const productWholesalerId = product.wholesaler_info?.id;
+
+        // Eğer sepette ürün varsa ve eklenen yeni ürün farklı bir toptancıya aitse, sepeti temizle.
+        if (selectedWholesalerId && productWholesalerId && selectedWholesalerId !== productWholesalerId) {
+          console.warn(`Farklı bir toptancıdan ürün eklendi. Mevcut sepet temizleniyor.`);
+          clearCart(); // Sepeti temizle
+        }
+
+        // State'i en güncel haliyle tekrar al (clearCart sonrası)
         const currentItems = get().items;
         const existingItem = currentItems.find(item => item.id === product.id);
-        
+
         if (existingItem) {
-          // Update existing item quantity
-          get().updateQuantity(product.id, existingItem.quantity + quantity);
+          // Mevcut ürünün miktarını güncelle
+          updateQuantity(product.id, existingItem.quantity + quantity);
         } else {
-          // Add new item
+          // Yeni ürün ekle
           const newItem: CartProduct = {
             ...product,
             quantity,
@@ -60,15 +71,15 @@ export const useCartStore = create<CartState>()(
           
           set({ items: [...currentItems, newItem] });
           
-          // If this is the first item, set wholesaler automatically
-          if (currentItems.length === 0 && product.wholesaler_info) {
-            get().setWholesaler(product.wholesaler_info.id, product.wholesaler_info.name);
+          // Eğer bu ilk ürünse (veya sepet temizlendiyse), toptancıyı otomatik olarak ayarla
+          if (get().items.length === 1 && product.wholesaler_info) {
+            setWholesaler(product.wholesaler_info.id, product.wholesaler_info.name);
           }
           
-          console.log(`✅ Added ${product.name} to cart (${quantity} units)`);
+          console.log(`✅ ${product.name} sepete eklendi (${quantity} adet)`);
         }
         
-        // Auto-calculate cart if wholesaler is selected
+        // Toptancı seçiliyse sepeti otomatik hesapla
         if (get().selectedWholesalerId) {
           setTimeout(() => get().calculateCart(), 100);
         }
@@ -149,45 +160,48 @@ export const useCartStore = create<CartState>()(
       calculateCart: async () => {
         const { items, selectedWholesalerId } = get();
         
-        console.log('🧮 Calculate cart called:', { 
-          itemsCount: items.length, 
-          wholesalerId: selectedWholesalerId 
-        });
         
-        if (!selectedWholesalerId || items.length === 0) {
-          console.log('⚠️ Cannot calculate: no wholesaler or no items');
+        if (items.length === 0) {
           set({ cartCalculation: null, calculationError: null });
           return;
         }
         
-        // Filter items for selected wholesaler
-        const wholesalerItems = items.filter(item => 
-          item.wholesaler_info?.id === selectedWholesalerId
-        );
+        // Eğer ürünlerin wholesaler_info'su yoksa, tüm ürünleri hesapla
+        const hasWholesalerInfo = items.some(item => item.wholesaler_info?.id);
         
-        console.log('🏪 Wholesaler items:', { 
-          totalItems: items.length, 
-          wholesalerItems: wholesalerItems.length 
-        });
+        let wholesalerItems = items;
+        let effectiveWholesalerId = selectedWholesalerId;
         
-        if (wholesalerItems.length === 0) {
-          console.log('⚠️ No items for selected wholesaler');
-          set({ cartCalculation: null, calculationError: null });
-          return;
+        if (hasWholesalerInfo) {
+          // Normal durum: toptancı bilgisi olan ürünler
+          if (!selectedWholesalerId) {
+            set({ cartCalculation: null, calculationError: null });
+            return;
+          }
+          
+          wholesalerItems = items.filter(item => 
+            item.wholesaler_info?.id === selectedWholesalerId
+          );
+          
+          if (wholesalerItems.length === 0) {
+            set({ cartCalculation: null, calculationError: null });
+            return;
+          }
+        } else {
+          // Özel durum: ürünlerin wholesaler_info'su yok, direkt hesapla
+          effectiveWholesalerId = 1; // Default wholesaler ID kullan
         }
         
         try {
           set({ isCalculating: true, calculationError: null });
           
           const cartData = {
-            wholesaler_id: selectedWholesalerId,
+            wholesaler_id: effectiveWholesalerId,
             items: wholesalerItems.map(item => ({
               product_id: item.id,
               quantity: item.quantity
             }))
           };
-          
-          console.log('📡 Sending cart data to API:', cartData);
           
           const response = await ordersApi.calculateCart(cartData);
           
@@ -197,8 +211,6 @@ export const useCartStore = create<CartState>()(
             calculationError: null
           });
           
-          console.log('💰 Cart calculation updated:', response.cart);
-          
         } catch (error: any) {
           const errorMessage = handleApiError(error);
           
@@ -206,11 +218,6 @@ export const useCartStore = create<CartState>()(
             cartCalculation: null,
             isCalculating: false,
             calculationError: errorMessage
-          });
-          
-          console.error('❌ Cart calculation failed:', {
-            error: errorMessage,
-            originalError: error
           });
         }
       },
@@ -242,20 +249,17 @@ export const useCartStore = create<CartState>()(
       canCheckout: () => {
         const { items, selectedWholesalerId, cartCalculation } = get();
         
-        const result = items.length > 0 && 
-               selectedWholesalerId !== null && 
-               cartCalculation !== null &&
-               cartCalculation.total_amount !== '0.00' &&
-               parseFloat(cartCalculation.total_amount) > 0;
+        // Ürünlerin wholesaler_info'su var mı kontrol et
+        const hasWholesalerInfo = items.some(item => item.wholesaler_info?.id);
         
-        console.log('🔍 canCheckout check:', {
-          hasItems: items.length > 0,
-          hasWholesaler: selectedWholesalerId !== null,
-          hasCalculation: cartCalculation !== null,
-          totalAmount: cartCalculation?.total_amount,
-          totalAmountFloat: cartCalculation ? parseFloat(cartCalculation.total_amount) : 0,
-          result
-        });
+        const hasItems = items.length > 0;
+        const hasValidWholesaler = hasWholesalerInfo ? selectedWholesalerId !== null : true;
+        const hasValidCalculation = cartCalculation !== null &&
+                                   cartCalculation.total_amount !== '0.00' &&
+                                   parseFloat(cartCalculation.total_amount) > 0;
+        
+        const result = hasItems && hasValidWholesaler && hasValidCalculation;
+        
         
         return result;
       },
@@ -275,6 +279,7 @@ export const useCartStore = create<CartState>()(
 
 // DÜZELTILMIŞ Helper hooks
 export const useCart = () => {
+  const state = useCartStore();
   const {
     items,
     selectedWholesalerId,
@@ -282,8 +287,7 @@ export const useCart = () => {
     cartCalculation,
     isCalculating,
     calculationError,
-    canCheckout: storeCanCheckout,
-  } = useCartStore();
+  } = state;
 
   return {
     items,
@@ -295,7 +299,7 @@ export const useCart = () => {
     totalItems: items.reduce((total, item) => total + item.quantity, 0),
     totalUniqueProducts: items.length,
     hasItems: items.length > 0,
-    canCheckout: storeCanCheckout(), // Fonksiyon çağırarak güncel değeri al
+    canCheckout: state.canCheckout(), // Store state'ini kullanarak fonksiyon çağır
   };
 };
 

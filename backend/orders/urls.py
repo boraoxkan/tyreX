@@ -10,10 +10,10 @@ router = DefaultRouter()
 router.register(r'orders', OrderViewSet, basename='order')
 
 urlpatterns = [
+    # Ek endpoint'ler (router'dan önce tanımla)
+    path('calculate-cart/', calculate_cart, name='calculate_cart'),
+    path('statistics/', order_statistics, name='order_statistics'),
+    
     # Router URL'leri
     path('', include(router.urls)),
-    
-    # Ek endpoint'ler
-    path('orders/calculate-cart/', calculate_cart, name='calculate_cart'),
-    path('orders/statistics/', order_statistics, name='order_statistics'),
 ]

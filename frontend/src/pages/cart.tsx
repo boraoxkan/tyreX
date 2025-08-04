@@ -56,10 +56,17 @@ const CartPage: React.FC = () => {
 
   // Calculate cart on mount
   useEffect(() => {
-    if (hasItems && selectedWholesalerId) {
-      calculateCart();
+    if (hasItems) {
+      // Ürünlerin wholesaler_info'su var mı kontrol et
+      const hasWholesalerInfo = items.some(item => item.wholesaler_info?.id);
+      
+      // Eğer wholesaler_info varsa ve wholesaler seçilmişse hesapla
+      // Eğer wholesaler_info yoksa direkt hesapla
+      if (!hasWholesalerInfo || selectedWholesalerId) {
+        calculateCart();
+      }
     }
-  }, []);
+  }, [hasItems, selectedWholesalerId, items]);
 
   const formatPrice = (price: string) => {
     return `₺${parseFloat(price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
@@ -78,16 +85,7 @@ const CartPage: React.FC = () => {
   };
 
   const handlePlaceOrder = async () => {
-    console.log('🛒 Place order clicked', {
-      canCheckout,
-      cartCalculation: !!cartCalculation,
-      selectedWholesalerId,
-      deliveryAddress: deliveryInfo.address.trim(),
-      itemsCount: items.length
-    });
-
     if (!canCheckout || !cartCalculation) {
-      console.warn('❌ Cannot checkout:', { canCheckout, cartCalculation: !!cartCalculation });
       setOrderError('Sipariş verilemez. Sepet hesaplaması tamamlanmadı.');
       return;
     }
@@ -101,8 +99,11 @@ const CartPage: React.FC = () => {
       setIsPlacingOrder(true);
       setOrderError(null);
 
+      // Eğer selectedWholesalerId yoksa 1 kullan (mixed wholesaler durumu için)
+      const effectiveWholesalerId = selectedWholesalerId || 1;
+      
       const orderData: CreateOrderRequest = {
-        wholesaler_id: selectedWholesalerId!,
+        wholesaler_id: effectiveWholesalerId,
         items: items.map(item => ({
           product_id: item.id,
           quantity: item.quantity
@@ -113,11 +114,7 @@ const CartPage: React.FC = () => {
         notes: deliveryInfo.notes.trim()
       };
 
-      console.log('📤 Sending order data:', orderData);
-
       const response = await ordersApi.createOrder(orderData);
-      
-      console.log('✅ Order created successfully:', response);
       
       // Clear cart after successful order
       clearCart();
@@ -128,7 +125,6 @@ const CartPage: React.FC = () => {
     } catch (error: any) {
       const errorMessage = handleApiError(error);
       setOrderError(errorMessage);
-      console.error('❌ Order placement failed:', errorMessage, error);
     } finally {
       setIsPlacingOrder(false);
     }
@@ -344,6 +340,13 @@ const CartPage: React.FC = () => {
                     </div>
                   )}
 
+                  {/* No calculation state */}
+                  {!cartCalculation && !isCalculating && (
+                    <div className="text-center py-4 text-gray-500">
+                      <p className="text-sm">Sepet hesaplanması tamamlanmadı</p>
+                    </div>
+                  )}
+
                   {/* Delivery Info */}
                   <div className="space-y-3 pt-4 border-t">
                     <h4 className="font-medium text-gray-900">Teslimat Bilgileri</h4>
@@ -395,13 +398,6 @@ const CartPage: React.FC = () => {
 
                   {/* Checkout Button */}
                   <div className="space-y-3 pt-4 border-t">
-                    {/* Debug Info - Geçici */}
-                    <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
-                      Debug: canCheckout={String(canCheckout)} | 
-                      hasCalc={String(!!cartCalculation)} | 
-                      hasAddr={String(!!deliveryInfo.address.trim())} |
-                      placing={String(isPlacingOrder)}
-                    </div>
 
                     <button
                       onClick={handlePlaceOrder}

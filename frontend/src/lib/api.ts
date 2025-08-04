@@ -656,14 +656,14 @@ export const marketApi = {
 export const ordersApi = {
   // Get orders list
   getOrders: async (params?: URLSearchParams): Promise<PaginatedResponse<Order>> => {
-    const url = params ? `/orders/?${params.toString()}` : '/orders/';
+    const url = params ? `/orders/orders/?${params.toString()}` : '/orders/orders/';
     const response = await api.get<PaginatedResponse<Order>>(url);
     return response.data;
   },
 
   // Get single order
   getOrder: async (id: number): Promise<Order> => {
-    const response = await api.get<Order>(`/orders/${id}/`);
+    const response = await api.get<Order>(`/orders/orders/${id}/`);
     return response.data;
   },
 
@@ -672,7 +672,7 @@ export const ordersApi = {
     message: string; 
     order: Order 
   }> => {
-    const response = await api.post<{ message: string; order: Order }>('/orders/', data);
+    const response = await api.post<{ message: string; order: Order }>('/orders/orders/', data);
     return response.data;
   },
 
@@ -681,13 +681,13 @@ export const ordersApi = {
     status: string;
     notes?: string;
   }): Promise<{ message: string; order: Order }> => {
-    const response = await api.post<{ message: string; order: Order }>(`/orders/${id}/update_status/`, data);
+    const response = await api.post<{ message: string; order: Order }>(`/orders/orders/${id}/update_status/`, data);
     return response.data;
   },
 
   // Cancel order
   cancelOrder: async (id: number): Promise<{ message: string }> => {
-    const response = await api.delete<{ message: string }>(`/orders/${id}/`);
+    const response = await api.delete<{ message: string }>(`/orders/orders/${id}/`);
     return response.data;
   },
 
@@ -711,7 +711,7 @@ export const ordersApi = {
       changed_at: string;
     }>;
   }> => {
-    const response = await api.get(`/orders/${id}/status_history/`);
+    const response = await api.get(`/orders/orders/${id}/status_history/`);
     return response.data;
   },
 
@@ -731,7 +731,7 @@ export const ordersApi = {
       average_order_value: string;
     };
   }> => {
-    const response = await api.get('/orders/summary/');
+    const response = await api.get('/orders/orders/summary/');
     return response.data;
   },
 

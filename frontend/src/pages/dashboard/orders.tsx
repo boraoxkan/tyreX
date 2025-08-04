@@ -76,7 +76,7 @@ const OrdersPage: React.FC = () => {
       if (dateTo) params.append('date_to', dateTo);
       
       const response = await ordersApi.getOrders(params);
-      setOrders(response.results);
+      setOrders(response.results || response);
       
     } catch (err: any) {
       const errorMessage = handleApiError(err);
@@ -412,7 +412,7 @@ const OrdersPage: React.FC = () => {
                               Toptancı
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Ürün Sayısı
+                              Ürünler
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Toplam
@@ -447,10 +447,32 @@ const OrdersPage: React.FC = () => {
                                   {order.wholesaler_name}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <div>{order.total_items} adet</div>
-                                <div className="text-xs text-gray-400">
-                                  {order.total_unique_products} ürün
+                              <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                                <div className="space-y-1">
+                                  {order.items && order.items.length > 0 ? (
+                                    <>
+                                      {order.items.slice(0, 2).map((item: any) => (
+                                        <div key={item.id} className="flex justify-between items-center">
+                                          <span className="truncate mr-2" title={item.product_name}>
+                                            {item.product_name}
+                                          </span>
+                                          <span className="text-xs text-gray-400 whitespace-nowrap">
+                                            {item.quantity} adet
+                                          </span>
+                                        </div>
+                                      ))}
+                                      {order.items.length > 2 && (
+                                        <div className="text-xs text-gray-400">
+                                          +{order.items.length - 2} ürün daha...
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div>{order.total_items} adet</div>
+                                  )}
+                                  <div className="text-xs text-gray-400 border-t pt-1 mt-1">
+                                    {order.total_unique_products} farklı ürün
+                                  </div>
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
