@@ -532,6 +532,17 @@ export const userApi = {
     const response = await api.get('/users/wholesaler-summary/');
     return response.data;
   },
+
+  // Get dashboard statistics
+  getDashboardStats: async (): Promise<{
+    total_orders: number;
+    pending_orders: number;
+    total_spent: string;
+    marketplace_views: number;
+  }> => {
+    const response = await api.get('/users/dashboard-stats/');
+    return response.data;
+  },
 };
 
 export const companyApi = {
@@ -748,6 +759,237 @@ export const ordersApi = {
   getStatistics: async (): Promise<any> => {
     const response = await api.get('/orders/statistics/');
     return response.data;
+  },
+};
+
+// Customer API Types
+export interface Customer {
+  id: number;
+  name: string;
+  customer_type: 'individual' | 'business' | 'fleet';
+  customer_type_display: string;
+  wholesaler: number;
+  wholesaler_name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  company_name?: string;
+  tax_number?: string;
+  customer_code?: string;
+  credit_limit?: number;
+  payment_terms_days: number;
+  discount_rate: number;
+  is_active: boolean;
+  is_vip: boolean;
+  registration_date: string;
+  tire_hotel_enabled: boolean;
+  tire_storage_capacity?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Computed fields
+  full_name: string;
+  total_tire_storage_count: number;
+  available_storage_capacity?: number;
+  is_storage_full: boolean;
+}
+
+export interface CustomerVisit {
+  id: number;
+  customer: number;
+  customer_name: string;
+  visit_type: 'purchase' | 'tire_storage' | 'tire_pickup' | 'maintenance' | 'consultation' | 'other';
+  visit_type_display: string;
+  visit_date: string;
+  description: string;
+  sale_amount?: number;
+  served_by?: number;
+  served_by_name?: string;
+  is_completed: boolean;
+  duration_minutes?: number;
+  customer_satisfaction?: number;
+  notes?: string;
+}
+
+export interface StoredTire {
+  id: number;
+  customer: number;
+  customer_name: string;
+  tire_brand: string;
+  tire_model: string;
+  tire_size: string;
+  tire_season: 'summer' | 'winter' | 'all_season';
+  tire_season_display: string;
+  quantity: number;
+  has_rims: boolean;
+  rim_brand?: string;
+  rim_size?: string;
+  tire_condition: 'excellent' | 'good' | 'fair' | 'poor' | 'damaged';
+  tire_condition_display: string;
+  production_year?: number;
+  storage_location: string;
+  storage_date: string;
+  planned_pickup_date?: string;
+  actual_pickup_date?: string;
+  is_active: boolean;
+  storage_fee_monthly?: number;
+  notes?: string;
+  special_instructions?: string;
+  has_photos: boolean;
+  created_at: string;
+  updated_at: string;
+  // Computed fields
+  storage_duration_days: number;
+  is_overdue: boolean;
+  total_storage_cost: number;
+}
+
+export interface CustomerStats {
+  total_customers: number;
+  active_customers: number;
+  vip_customers: number;
+  tire_hotel_customers: number;
+  total_visits_today: number;
+  total_visits_this_month: number;
+  avg_customer_satisfaction: number;
+  total_stored_tires: number;
+  total_storage_revenue: number;
+  overdue_pickups: number;
+}
+
+export interface CustomerDashboard {
+  stats: CustomerStats;
+  recent_visits: CustomerVisit[];
+  recent_tire_storage: StoredTire[];
+  top_customers: Customer[];
+}
+
+// Customer API Functions
+export const customersApi = {
+  // Get customers list
+  getCustomers: async (params?: URLSearchParams): Promise<PaginatedResponse<Customer>> => {
+    const url = params ? `/customers/api/customers/?${params.toString()}` : '/customers/api/customers/';
+    const response = await api.get<PaginatedResponse<Customer>>(url);
+    return response.data;
+  },
+
+  // Get single customer
+  getCustomer: async (id: number): Promise<Customer> => {
+    const response = await api.get<Customer>(`/customers/api/customers/${id}/`);
+    return response.data;
+  },
+
+  // Create new customer
+  createCustomer: async (data: Partial<Customer>): Promise<Customer> => {
+    const response = await api.post<Customer>('/customers/api/customers/', data);
+    return response.data;
+  },
+
+  // Update customer
+  updateCustomer: async (id: number, data: Partial<Customer>): Promise<Customer> => {
+    const response = await api.put<Customer>(`/customers/api/customers/${id}/`, data);
+    return response.data;
+  },
+
+  // Delete customer
+  deleteCustomer: async (id: number): Promise<void> => {
+    await api.delete(`/customers/api/customers/${id}/`);
+  },
+
+  // Get customer visits
+  getCustomerVisits: async (customerId: number, params?: URLSearchParams): Promise<PaginatedResponse<CustomerVisit>> => {
+    const url = params 
+      ? `/customers/api/customers/${customerId}/visits/?${params.toString()}` 
+      : `/customers/api/customers/${customerId}/visits/`;
+    const response = await api.get<PaginatedResponse<CustomerVisit>>(url);
+    return response.data;
+  },
+
+  // Get customer stored tires
+  getCustomerStoredTires: async (customerId: number, params?: URLSearchParams): Promise<PaginatedResponse<StoredTire>> => {
+    const url = params 
+      ? `/customers/api/customers/${customerId}/stored_tires/?${params.toString()}` 
+      : `/customers/api/customers/${customerId}/stored_tires/`;
+    const response = await api.get<PaginatedResponse<StoredTire>>(url);
+    return response.data;
+  },
+
+  // Toggle customer VIP status
+  toggleVip: async (id: number): Promise<{ message: string; is_vip: boolean }> => {
+    const response = await api.post<{ message: string; is_vip: boolean }>(`/customers/api/customers/${id}/toggle_vip/`);
+    return response.data;
+  },
+
+  // Get customers dashboard
+  getDashboard: async (): Promise<CustomerDashboard> => {
+    const response = await api.get<CustomerDashboard>('/customers/api/customers/dashboard/');
+    return response.data;
+  },
+
+  // Customer visits
+  visits: {
+    // Get all visits
+    getVisits: async (params?: URLSearchParams): Promise<PaginatedResponse<CustomerVisit>> => {
+      const url = params ? `/customers/api/visits/?${params.toString()}` : '/customers/api/visits/';
+      const response = await api.get<PaginatedResponse<CustomerVisit>>(url);
+      return response.data;
+    },
+
+    // Create new visit
+    createVisit: async (data: Partial<CustomerVisit>): Promise<CustomerVisit> => {
+      const response = await api.post<CustomerVisit>('/customers/api/visits/', data);
+      return response.data;
+    },
+
+    // Update visit
+    updateVisit: async (id: number, data: Partial<CustomerVisit>): Promise<CustomerVisit> => {
+      const response = await api.put<CustomerVisit>(`/customers/api/visits/${id}/`, data);
+      return response.data;
+    },
+
+    // Delete visit
+    deleteVisit: async (id: number): Promise<void> => {
+      await api.delete(`/customers/api/visits/${id}/`);
+    },
+  },
+
+  // Stored tires
+  storedTires: {
+    // Get all stored tires
+    getStoredTires: async (params?: URLSearchParams): Promise<PaginatedResponse<StoredTire>> => {
+      const url = params ? `/customers/api/stored-tires/?${params.toString()}` : '/customers/api/stored-tires/';
+      const response = await api.get<PaginatedResponse<StoredTire>>(url);
+      return response.data;
+    },
+
+    // Create new stored tire
+    createStoredTire: async (data: Partial<StoredTire>): Promise<StoredTire> => {
+      const response = await api.post<StoredTire>('/customers/api/stored-tires/', data);
+      return response.data;
+    },
+
+    // Update stored tire
+    updateStoredTire: async (id: number, data: Partial<StoredTire>): Promise<StoredTire> => {
+      const response = await api.put<StoredTire>(`/customers/api/stored-tires/${id}/`, data);
+      return response.data;
+    },
+
+    // Mark tire as picked up
+    markPickedUp: async (id: number): Promise<{ message: string; pickup_date: string }> => {
+      const response = await api.post<{ message: string; pickup_date: string }>(`/customers/api/stored-tires/${id}/mark_picked_up/`);
+      return response.data;
+    },
+
+    // Get overdue pickups
+    getOverduePickups: async (): Promise<StoredTire[]> => {
+      const response = await api.get<StoredTire[]>('/customers/api/stored-tires/overdue_pickups/');
+      return response.data;
+    },
+
+    // Delete stored tire
+    deleteStoredTire: async (id: number): Promise<void> => {
+      await api.delete(`/customers/api/stored-tires/${id}/`);
+    },
   },
 };
 

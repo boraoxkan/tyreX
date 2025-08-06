@@ -12,7 +12,8 @@ import {
   Clock,
   ArrowRight,
   Star,
-  Calendar
+  Calendar,
+  Settings
 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import AuthGuard from '@/components/auth/AuthGuard';
@@ -53,13 +54,20 @@ const DashboardPage: React.FC = () => {
         const companyData = await userApi.getCompanyInfo();
         setCompanyInfo(companyData);
 
-        // Mock stats for now (in real app, this would come from API)
-        setStats({
-          total_orders: 12,
-          pending_orders: 3,
-          total_spent: '45,750.00',
-          marketplace_views: 156,
-        });
+        // Load real dashboard stats from API
+        try {
+          const dashboardStats = await userApi.getDashboardStats();
+          setStats(dashboardStats);
+        } catch (statsError) {
+          console.warn('Failed to load dashboard stats, using fallback data:', statsError);
+          // Fallback to mock data if API fails
+          setStats({
+            total_orders: 0,
+            pending_orders: 0,
+            total_spent: '0.00',
+            marketplace_views: 0,
+          });
+        }
 
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
@@ -280,11 +288,24 @@ const DashboardPage: React.FC = () => {
                     </Link>
 
                     <Link
-                      href="/settings"
+                      href="/dashboard/customers"
                       className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
                     >
                       <div className="flex items-center">
                         <Users className="h-8 w-8 text-primary-600 group-hover:text-primary-700" />
+                        <div className="ml-3">
+                          <h4 className="text-sm font-medium text-gray-900">Müşterilerim</h4>
+                          <p className="text-xs text-gray-500">Müşteri yönetimi</p>
+                        </div>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/settings"
+                      className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
+                    >
+                      <div className="flex items-center">
+                        <Settings className="h-8 w-8 text-primary-600 group-hover:text-primary-700" />
                         <div className="ml-3">
                           <h4 className="text-sm font-medium text-gray-900">Ayarlar</h4>
                           <p className="text-xs text-gray-500">Hesap yönetimi</p>

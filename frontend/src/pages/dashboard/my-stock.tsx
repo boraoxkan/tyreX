@@ -126,11 +126,12 @@ const MyStockPage: React.FC = () => {
 
       // Load warehouses
       const warehousesResponse = await inventoryApi.getWarehouses();
-      setWarehouses(warehousesResponse);
+      const warehousesData = warehousesResponse.results || warehousesResponse;
+      setWarehouses(warehousesData);
 
       // Set first warehouse as selected if not already set
-      if (warehousesResponse.length > 0 && !selectedWarehouse) {
-        setSelectedWarehouse(warehousesResponse[0].id.toString());
+      if (warehousesData.length > 0 && !selectedWarehouse) {
+        setSelectedWarehouse(warehousesData[0].id.toString());
       }
 
       // Load products (mock data for now - in real app would come from API)
@@ -167,10 +168,12 @@ const MyStockPage: React.FC = () => {
       }
 
       const response = await inventoryApi.getStockItems(params);
-      setStockItems(response);
+      const stockItemsData = response.results || response;
+      setStockItems(stockItemsData);
     } catch (error: any) {
       console.error('Failed to load stock items:', error);
       setError('Stok kalemleri yüklenirken hata oluştu.');
+      setStockItems([]);
     }
   };
 
@@ -298,7 +301,7 @@ const MyStockPage: React.FC = () => {
     );
   };
 
-  const filteredStockItems = stockItems.filter(item =>
+  const filteredStockItems = (Array.isArray(stockItems) ? stockItems : []).filter(item =>
     item.product_details.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.product_details.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.product_details.brand && item.product_details.brand.toLowerCase().includes(searchTerm.toLowerCase()))

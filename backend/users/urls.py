@@ -16,6 +16,7 @@ from .views import (
     RemoveWholesalerRelationView,
     user_company_info,
     user_wholesaler_summary,
+    dashboard_stats,
     api_health_check
 )
 
@@ -31,6 +32,7 @@ urlpatterns = [
     # Kullanıcı profili endpoint'leri
     path('users/me/', UserProfileView.as_view(), name='user_profile'),
     path('users/company-info/', user_company_info, name='user_company_info'),
+    path('users/dashboard-stats/', dashboard_stats, name='dashboard_stats'),
     
     # Toptancı ilişkisi yönetimi - YENİ!
     path('users/wholesaler-relations/', UserWholesalerRelationsView.as_view(), name='user_wholesaler_relations'),

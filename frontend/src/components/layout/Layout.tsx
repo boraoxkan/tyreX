@@ -16,7 +16,8 @@ import {
   Search,
   Warehouse,
   CreditCard,
-  Store
+  Store,
+  Users
 } from 'lucide-react';
 import { useAuth, useAuthActions } from '@/store/authStore';
 import { useCart } from '@/store/cartStore'; // Yeni eklendi
@@ -80,6 +81,13 @@ const Layout: React.FC<LayoutProps> = ({
       href: '/dashboard/my-warehouses',
       icon: Warehouse,
       current: router.pathname.startsWith('/dashboard/my-warehouses'),
+    },
+    {
+      name: 'Müşterilerim',
+      href: '/dashboard/customers',
+      icon: Users,
+      current: router.pathname.startsWith('/dashboard/customers'),
+      requiresWholesaler: true, // Sadece toptancılar için
     },
     {
       name: 'Abonelik',
@@ -150,6 +158,14 @@ const Layout: React.FC<LayoutProps> = ({
           
           // Check if user has marketplace access for marketplace-required items
           const isAccessible = !item.requiresMarketplace || hasMarketplaceAccess;
+          
+          // Check if user is wholesaler for wholesaler-required items
+          const isWholesalerAccessible = !item.requiresWholesaler || (company?.company_type === 'wholesaler' || company?.company_type === 'both');
+          
+          // Skip item if not accessible
+          if (!isWholesalerAccessible) {
+            return null;
+          }
           
           return (
             <Link

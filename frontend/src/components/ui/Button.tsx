@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -8,6 +9,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
   icon?: React.ReactNode;
   fullWidth?: boolean;
+  href?: string; // Link desteği için
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -19,6 +21,7 @@ const Button: React.FC<ButtonProps> = ({
   icon,
   fullWidth = false,
   disabled,
+  href,
   ...props
 }) => {
   const baseClasses = 'btn focus-ring';
@@ -39,33 +42,47 @@ const Button: React.FC<ButtonProps> = ({
 
   const isDisabled = disabled || loading;
 
+  const buttonClasses = cn(
+    baseClasses,
+    variantClasses[variant],
+    sizeClasses[size],
+    fullWidth && 'w-full',
+    className
+  );
+
+  const buttonContent = loading ? (
+    <>
+      <LoadingSpinner 
+        size={size === 'sm' ? 'sm' : 'md'} 
+        color={variant === 'outline' ? 'primary' : 'white'} 
+        className="mr-2" 
+      />
+      {children}
+    </>
+  ) : (
+    <>
+      {icon && <span className="mr-2">{icon}</span>}
+      {children}
+    </>
+  );
+
+  // If href is provided, render as Link
+  if (href) {
+    return (
+      <Link href={href} className={buttonClasses}>
+        {buttonContent}
+      </Link>
+    );
+  }
+
+  // Otherwise render as button
   return (
     <button
-      className={cn(
-        baseClasses,
-        variantClasses[variant],
-        sizeClasses[size],
-        fullWidth && 'w-full',
-        className
-      )}
+      className={buttonClasses}
       disabled={isDisabled}
       {...props}
     >
-      {loading ? (
-        <>
-          <LoadingSpinner 
-            size={size === 'sm' ? 'sm' : 'md'} 
-            color={variant === 'outline' ? 'primary' : 'white'} 
-            className="mr-2" 
-          />
-          {children}
-        </>
-      ) : (
-        <>
-          {icon && <span className="mr-2">{icon}</span>}
-          {children}
-        </>
-      )}
+      {buttonContent}
     </button>
   );
 };

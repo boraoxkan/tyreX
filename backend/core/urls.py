@@ -12,6 +12,7 @@ urlpatterns = [
     path('api/v1/inventory/', include('inventory.urls')),
     path('api/v1/market/', include('market.urls')),
     path('api/v1/orders/', include('orders.urls')),
+    path('api/v1/customers/', include('customers.urls')),
 ]
 
 # Debug Toolbar URL'ini sadece DEBUG=True ve ENABLE_DEBUG_TOOLBAR=True iken ekle

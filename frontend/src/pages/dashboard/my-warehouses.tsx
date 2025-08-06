@@ -98,7 +98,8 @@ const MyWarehousesPage: React.FC = () => {
       setError(null);
       
       const response = await inventoryApi.getWarehouses();
-      setWarehouses(response);
+      const warehousesData = response.results || response;
+      setWarehouses(warehousesData);
     } catch (error: any) {
       console.error('Failed to load warehouses:', error);
       setError('Depolar yüklenirken hata oluştu.');

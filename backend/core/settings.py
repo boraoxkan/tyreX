@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'subscriptions',  # YENİ EKLENDİ
     'market',         # YENİ EKLENDİ
     'orders',
+    'customers',  # Müşteri yönetimi
 ]
 
 MIDDLEWARE = [
@@ -124,6 +125,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle'
