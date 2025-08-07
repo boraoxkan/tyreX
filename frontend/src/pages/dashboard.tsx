@@ -18,6 +18,7 @@ import {
 import Layout from '@/components/layout/Layout';
 import AuthGuard from '@/components/auth/AuthGuard';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import PremiumFeatureCard from '@/components/ui/PremiumFeatureCard';
 import { useAuth } from '@/store/authStore';
 import { userApi } from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
@@ -31,7 +32,14 @@ interface DashboardStats {
 
 const DashboardPage: React.FC = () => {
   const router = useRouter();
-  const { user, company, subscription, hasMarketplaceAccess } = useAuth();
+  const { 
+    user, 
+    company, 
+    subscription, 
+    hasMarketplaceAccess,
+    hasCustomerManagementAccess,
+    hasFullDashboardAccess
+  } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -209,6 +217,40 @@ const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {quickStats.map((stat, index) => {
               const Icon = stat.icon;
+              
+              // Premium özellikler için blur kontrolü
+              const isPremiumStat = stat.name === 'Toplam Sipariş' || stat.name === 'Bekleyen Sipariş';
+              const isMarketplaceStat = stat.name === 'Pazaryeri Görüntüleme';
+              const shouldBlur = (isPremiumStat && !hasFullDashboardAccess) || 
+                               (isMarketplaceStat && !hasMarketplaceAccess);
+              
+              if (shouldBlur) {
+                return (
+                  <PremiumFeatureCard
+                    key={index}
+                    title={isPremiumStat ? "Sipariş Analitiği" : "Pazaryeri İstatistikleri"}
+                    description={isPremiumStat ? "Detaylı sipariş takip verileri" : "Pazaryeri performans metrikleri"}
+                    requiredPlan={isPremiumStat ? "Premium Plan" : "Temel Plan"}
+                    requiredPrice={isPremiumStat ? "4500₺/ay" : "299₺/ay"}
+                    className="h-auto"
+                  >
+                    <div className="card">
+                      <div className="card-body">
+                        <div className="flex items-center">
+                          <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                            <Icon className={`h-6 w-6 ${stat.color}`} />
+                          </div>
+                          <div className="ml-4">
+                            <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                            <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </PremiumFeatureCard>
+                );
+              }
+              
               return (
                 <div key={index} className="card">
                   <div className="card-body">
@@ -236,6 +278,7 @@ const DashboardPage: React.FC = () => {
                 </div>
                 <div className="card-body">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Pazaryeri - Temel Plan (299₺) gerekli */}
                     {hasMarketplaceAccess ? (
                       <Link
                         href="/marketplace"
@@ -250,56 +293,128 @@ const DashboardPage: React.FC = () => {
                         </div>
                       </Link>
                     ) : (
-                      <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 opacity-75">
-                        <div className="flex items-center">
-                          <ShoppingCart className="h-8 w-8 text-gray-400" />
-                          <div className="ml-3">
-                            <h4 className="text-sm font-medium text-gray-600">Pazaryeri</h4>
-                            <p className="text-xs text-gray-500">Plan gerekli</p>
+                      <PremiumFeatureCard
+                        title="Pazaryeri Erişimi"
+                        description="Binlerce lastik ürününe erişim"
+                        requiredPlan="Temel Plan"
+                        requiredPrice="299₺/ay"
+                        className="h-20"
+                      >
+                        <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <div className="flex items-center">
+                            <ShoppingCart className="h-8 w-8 text-gray-400" />
+                            <div className="ml-3">
+                              <h4 className="text-sm font-medium text-gray-600">Pazaryeri</h4>
+                              <p className="text-xs text-gray-500">Ürünleri keşfedin</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </PremiumFeatureCard>
                     )}
 
-                    <Link
-                      href="/orders"
-                      className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
-                    >
-                      <div className="flex items-center">
-                        <Package className="h-8 w-8 text-primary-600 group-hover:text-primary-700" />
-                        <div className="ml-3">
-                          <h4 className="text-sm font-medium text-gray-900">Siparişlerim</h4>
-                          <p className="text-xs text-gray-500">Siparişleri görüntüle</p>
+                    {/* Siparişlerim - Premium Plan (4500₺) gerekli */}
+                    {hasFullDashboardAccess ? (
+                      <Link
+                        href="/orders"
+                        className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
+                      >
+                        <div className="flex items-center">
+                          <Package className="h-8 w-8 text-primary-600 group-hover:text-primary-700" />
+                          <div className="ml-3">
+                            <h4 className="text-sm font-medium text-gray-900">Siparişlerim</h4>
+                            <p className="text-xs text-gray-500">Siparişleri görüntüle</p>
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-
-                    <Link
-                      href="/reports"
-                      className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
-                    >
-                      <div className="flex items-center">
-                        <TrendingUp className="h-8 w-8 text-primary-600 group-hover:text-primary-700" />
-                        <div className="ml-3">
-                          <h4 className="text-sm font-medium text-gray-900">Raporlar</h4>
-                          <p className="text-xs text-gray-500">Satış analizi</p>
+                      </Link>
+                    ) : (
+                      <PremiumFeatureCard
+                        title="Sipariş Yönetimi"
+                        description="Detaylı sipariş takibi ve yönetimi"
+                        requiredPlan="Premium Plan"
+                        requiredPrice="4500₺/ay"
+                        className="h-20"
+                      >
+                        <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <div className="flex items-center">
+                            <Package className="h-8 w-8 text-gray-400" />
+                            <div className="ml-3">
+                              <h4 className="text-sm font-medium text-gray-600">Siparişlerim</h4>
+                              <p className="text-xs text-gray-500">Siparişleri görüntüle</p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </Link>
+                      </PremiumFeatureCard>
+                    )}
 
-                    <Link
-                      href="/dashboard/customers"
-                      className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
-                    >
-                      <div className="flex items-center">
-                        <Users className="h-8 w-8 text-primary-600 group-hover:text-primary-700" />
-                        <div className="ml-3">
-                          <h4 className="text-sm font-medium text-gray-900">Müşterilerim</h4>
-                          <p className="text-xs text-gray-500">Müşteri yönetimi</p>
+                    {/* Raporlar - Premium Plan (4500₺) gerekli */}
+                    {hasFullDashboardAccess ? (
+                      <Link
+                        href="/reports"
+                        className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
+                      >
+                        <div className="flex items-center">
+                          <TrendingUp className="h-8 w-8 text-primary-600 group-hover:text-primary-700" />
+                          <div className="ml-3">
+                            <h4 className="text-sm font-medium text-gray-900">Raporlar</h4>
+                            <p className="text-xs text-gray-500">Satış analizi</p>
+                          </div>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    ) : (
+                      <PremiumFeatureCard
+                        title="Detaylı Raporlar"
+                        description="Gelişmiş satış analitiği ve raporlama"
+                        requiredPlan="Premium Plan"
+                        requiredPrice="4500₺/ay"
+                        className="h-20"
+                      >
+                        <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <div className="flex items-center">
+                            <TrendingUp className="h-8 w-8 text-gray-400" />
+                            <div className="ml-3">
+                              <h4 className="text-sm font-medium text-gray-600">Raporlar</h4>
+                              <p className="text-xs text-gray-500">Satış analizi</p>
+                            </div>
+                          </div>
+                        </div>
+                      </PremiumFeatureCard>
+                    )}
 
+                    {/* Müşterilerim - Müşteri Takibi (300₺) gerekli */}
+                    {hasCustomerManagementAccess ? (
+                      <Link
+                        href="/dashboard/customers"
+                        className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
+                      >
+                        <div className="flex items-center">
+                          <Users className="h-8 w-8 text-primary-600 group-hover:text-primary-700" />
+                          <div className="ml-3">
+                            <h4 className="text-sm font-medium text-gray-900">Müşterilerim</h4>
+                            <p className="text-xs text-gray-500">Müşteri yönetimi</p>
+                          </div>
+                        </div>
+                      </Link>
+                    ) : (
+                      <PremiumFeatureCard
+                        title="Müşteri Takibi"
+                        description="Müşteri yönetimi ve lastik oteli"
+                        requiredPlan="Müşteri Takibi"
+                        requiredPrice="300₺/ay"
+                        className="h-20"
+                      >
+                        <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <div className="flex items-center">
+                            <Users className="h-8 w-8 text-gray-400" />
+                            <div className="ml-3">
+                              <h4 className="text-sm font-medium text-gray-600">Müşterilerim</h4>
+                              <p className="text-xs text-gray-500">Müşteri yönetimi</p>
+                            </div>
+                          </div>
+                        </div>
+                      </PremiumFeatureCard>
+                    )}
+
+                    {/* Ayarlar - Herkese açık */}
                     <Link
                       href="/settings"
                       className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
@@ -312,6 +427,40 @@ const DashboardPage: React.FC = () => {
                         </div>
                       </div>
                     </Link>
+
+                    {/* Stok Yönetimi - Premium Plan (4500₺) gerekli */}
+                    {hasFullDashboardAccess ? (
+                      <Link
+                        href="/dashboard/my-stock"
+                        className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors group"
+                      >
+                        <div className="flex items-center">
+                          <Package className="h-8 w-8 text-primary-600 group-hover:text-primary-700" />
+                          <div className="ml-3">
+                            <h4 className="text-sm font-medium text-gray-900">Stok Yönetimi</h4>
+                            <p className="text-xs text-gray-500">Envanter takibi</p>
+                          </div>
+                        </div>
+                      </Link>
+                    ) : (
+                      <PremiumFeatureCard
+                        title="Stok Yönetimi"
+                        description="Gelişmiş envanter takip sistemi"
+                        requiredPlan="Premium Plan"
+                        requiredPrice="4500₺/ay"
+                        className="h-20"
+                      >
+                        <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <div className="flex items-center">
+                            <Package className="h-8 w-8 text-gray-400" />
+                            <div className="ml-3">
+                              <h4 className="text-sm font-medium text-gray-600">Stok Yönetimi</h4>
+                              <p className="text-xs text-gray-500">Envanter takibi</p>
+                            </div>
+                          </div>
+                        </div>
+                      </PremiumFeatureCard>
+                    )}
                   </div>
                 </div>
               </div>

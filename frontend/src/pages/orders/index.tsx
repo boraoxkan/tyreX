@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Package, Calendar, TrendingUp, Search, Filter, Eye, MoreVertical, AlertCircle } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import AuthGuard from '@/components/auth/AuthGuard';
+import SubscriptionGuard from '@/components/auth/SubscriptionGuard';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ordersApi, Order } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -72,6 +73,10 @@ const OrdersPage: React.FC = () => {
       </Head>
 
       <Layout title="Siparişlerim">
+        <SubscriptionGuard 
+          requiredPermission="full_dashboard"
+          fallbackMessage="Sipariş yönetimi özelliğine erişmek için 4500₺ premium paket gereklidir."
+        >
         <div className="space-y-6">
           {/* Error Alert */}
           {error && (
@@ -279,6 +284,7 @@ const OrdersPage: React.FC = () => {
           )}
 
         </div>
+        </SubscriptionGuard>
       </Layout>
     </AuthGuard>
   );

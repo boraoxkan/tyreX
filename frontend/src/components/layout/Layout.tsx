@@ -37,7 +37,14 @@ const Layout: React.FC<LayoutProps> = ({
   showHeader = true 
 }) => {
   const router = useRouter();
-  const { user, company, isAuthenticated, hasMarketplaceAccess } = useAuth();
+  const { 
+    user, 
+    company, 
+    isAuthenticated, 
+    hasMarketplaceAccess,
+    hasCustomerManagementAccess,
+    hasFullDashboardAccess
+  } = useAuth();
   const { logout } = useAuthActions();
   const { totalItems } = useCart(); // Yeni eklendi
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -52,42 +59,59 @@ const Layout: React.FC<LayoutProps> = ({
     },
     {
       name: 'Pazaryeri',
-      href: '/dashboard/products', // Güncellendi
-      icon: Store, // Icon değiştirildi
-      current: router.pathname.startsWith('/dashboard/products'), // Güncellendi
-      requiresMarketplace: true,
+      href: '/marketplace',
+      icon: Store,
+      current: router.pathname.startsWith('/marketplace'),
+      requiresSubscription: 'marketplace',
+      subscriptionPlan: 'ULTRA',
+      subscriptionPrice: '4500₺/ay',
     },
     {
-      name: 'Sepetim', // Yeni eklendi
+      name: 'Sepetim',
       href: '/cart',
       icon: ShoppingCart,
       current: router.pathname === '/cart',
       showBadge: true,
+      requiresSubscription: 'marketplace',
+      subscriptionPlan: 'ULTRA',
+      subscriptionPrice: '4500₺/ay',
     },
     {
-      name: 'Siparişlerim', // İsim güncellendi
-      href: '/dashboard/orders', // Güncellendi
+      name: 'Siparişlerim',
+      href: '/orders',
       icon: Package,
-      current: router.pathname.startsWith('/dashboard/orders'), // Güncellendi
+      current: router.pathname.startsWith('/orders'),
+      requiresSubscription: 'full_dashboard',
+      subscriptionPlan: 'ULTRA',
+      subscriptionPrice: '4500₺/ay',
     },
     {
       name: 'Stok Yönetimi',
       href: '/dashboard/my-stock',
       icon: Package,
       current: router.pathname.startsWith('/dashboard/my-stock'),
+      requiresSubscription: 'full_dashboard',
+      subscriptionPlan: 'ULTRA',
+      subscriptionPrice: '4500₺/ay',
     },
     {
       name: 'Depolarım',
       href: '/dashboard/my-warehouses',
       icon: Warehouse,
       current: router.pathname.startsWith('/dashboard/my-warehouses'),
+      requiresSubscription: 'full_dashboard',
+      subscriptionPlan: 'ULTRA',
+      subscriptionPrice: '4500₺/ay',
     },
     {
       name: 'Müşterilerim',
       href: '/dashboard/customers',
       icon: Users,
       current: router.pathname.startsWith('/dashboard/customers'),
-      requiresWholesaler: true, // Sadece toptancılar için
+      requiresWholesaler: true,
+      requiresSubscription: 'customer_management',
+      subscriptionPlan: 'PRO',
+      subscriptionPrice: '300₺/ay',
     },
     {
       name: 'Abonelik',
@@ -100,6 +124,9 @@ const Layout: React.FC<LayoutProps> = ({
       href: '/reports',
       icon: BarChart3,
       current: router.pathname.startsWith('/reports'),
+      requiresSubscription: 'full_dashboard',
+      subscriptionPlan: 'ULTRA',
+      subscriptionPrice: '4500₺/ay',
     },
     {
       name: 'Ayarlar',
@@ -156,8 +183,21 @@ const Layout: React.FC<LayoutProps> = ({
         {navigationItems.map((item) => {
           const Icon = item.icon;
           
-          // Check if user has marketplace access for marketplace-required items
-          const isAccessible = !item.requiresMarketplace || hasMarketplaceAccess;
+          // Check subscription access
+          let hasSubscriptionAccess = true;
+          if (item.requiresSubscription) {
+            switch (item.requiresSubscription) {
+              case 'marketplace':
+                hasSubscriptionAccess = hasMarketplaceAccess;
+                break;
+              case 'customer_management':
+                hasSubscriptionAccess = hasCustomerManagementAccess;
+                break;
+              case 'full_dashboard':
+                hasSubscriptionAccess = hasFullDashboardAccess;
+                break;
+            }
+          }
           
           // Check if user is wholesaler for wholesaler-required items
           const isWholesalerAccessible = !item.requiresWholesaler || (company?.company_type === 'wholesaler' || company?.company_type === 'both');
@@ -167,51 +207,69 @@ const Layout: React.FC<LayoutProps> = ({
             return null;
           }
           
+          // Skip item if subscription doesn't allow access (don't show locked items)
+          if (item.requiresSubscription && !hasSubscriptionAccess) {
+            return null;
+          }
+          
+          const isAccessible = hasSubscriptionAccess;
+          
           return (
-            <Link
-              key={item.name}
-              href={isAccessible ? item.href : '#'}
-              className={cn(
-                "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative",
-                item.current
-                  ? "bg-primary-100 text-primary-700"
-                  : isAccessible
-                  ? "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  : "text-gray-400 cursor-not-allowed"
-              )}
-              onClick={(e) => {
-                if (!isAccessible) {
-                  e.preventDefault();
-                  // Redirect to subscription page for marketplace access
-                  router.push('/dashboard/subscription');
-                } else {
-                  setSidebarOpen(false);
-                }
-              }}
-            >
-              <Icon className={cn(
-                "mr-3 h-5 w-5 flex-shrink-0",
-                item.current
-                  ? "text-primary-500"
-                  : isAccessible
-                  ? "text-gray-400 group-hover:text-gray-500"
-                  : "text-gray-300"
-              )} />
-              {item.name}
+            <div key={item.name} className="relative">
+              <Link
+                href={isAccessible ? item.href : '#'}
+                className={cn(
+                  "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative w-full",
+                  item.current
+                    ? "bg-primary-100 text-primary-700"
+                    : isAccessible
+                    ? "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    : "text-gray-400 cursor-not-allowed"
+                )}
+                onClick={(e) => {
+                  if (!isAccessible) {
+                    e.preventDefault();
+                    router.push('/dashboard/subscription');
+                  } else {
+                    setSidebarOpen(false);
+                  }
+                }}
+              >
+                <Icon className={cn(
+                  "mr-3 h-5 w-5 flex-shrink-0",
+                  item.current
+                    ? "text-primary-500"
+                    : isAccessible
+                    ? "text-gray-400 group-hover:text-gray-500"
+                    : "text-gray-300"
+                )} />
+                {item.name}
+                
+                {/* Sepet Badge - YENİ EKLENDİ */}  
+                {item.showBadge && totalItems > 0 && (
+                  <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[20px] h-5">
+                    {totalItems > 99 ? '99+' : totalItems}
+                  </span>
+                )}
+                
+                {/* Premium Badge */}
+                {!isAccessible && item.requiresSubscription && (
+                  <span className="ml-auto text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full font-medium">
+                    Pro
+                  </span>
+                )}
+              </Link>
               
-              {/* Sepet Badge - YENİ EKLENDİ */}  
-              {item.showBadge && totalItems > 0 && (
-                <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[20px] h-5">
-                  {totalItems > 99 ? '99+' : totalItems}
-                </span>
+              {/* Premium Tooltip */}
+              {!isAccessible && item.requiresSubscription && (
+                <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none">
+                  <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    {item.subscriptionPlan} gerekli ({item.subscriptionPrice})
+                    <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-gray-900"></div>
+                  </div>
+                </div>
               )}
-              
-              {!isAccessible && (
-                <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                  Pro
-                </span>
-              )}
-            </Link>
+            </div>
           );
         })}
       </nav>

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import AuthGuard from '@/components/auth/AuthGuard';
+import SubscriptionGuard from '@/components/auth/SubscriptionGuard';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/store/authStore';
 import { formatCurrency, formatNumber } from '@/lib/utils';
@@ -223,6 +224,10 @@ const MyWarehousesPage: React.FC = () => {
       </Head>
 
       <Layout title="Depolarım">
+        <SubscriptionGuard 
+          requiredPermission="full_dashboard"
+          fallbackMessage="Depo yönetimi özelliğine erişmek için 4500₺ premium paket gereklidir."
+        >
         <div className="space-y-6">
           {/* Header with Add Button */}
           <div className="flex items-center justify-between">
@@ -598,6 +603,7 @@ const MyWarehousesPage: React.FC = () => {
             </div>
           )}
         </div>
+        </SubscriptionGuard>
       </Layout>
     </AuthGuard>
   );

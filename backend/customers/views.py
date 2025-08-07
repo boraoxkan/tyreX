@@ -7,6 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db.models.functions import Coalesce
 
+from subscriptions.permissions import HasCustomerManagementAccess
 from .models import Customer, CustomerVisit, StoredTire
 from .serializers import (
     CustomerSerializer, CustomerListSerializer, CustomerVisitSerializer, 
@@ -19,7 +20,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     Müşteri yönetimi viewset'i
     """
     serializer_class = CustomerSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [HasCustomerManagementAccess]
     
     def get_queryset(self):
         """Sadece kullanıcının şirketinin müşterilerini getir"""

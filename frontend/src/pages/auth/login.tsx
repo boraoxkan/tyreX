@@ -203,14 +203,13 @@ const LoginPage: React.FC = () => {
                   <div className="mt-6 border-t border-gray-200 pt-6">
                     <p className="text-sm text-gray-600 mb-3">Demo hesaplar:</p>
                     <div className="space-y-2 text-xs">
-                      <div className="bg-gray-50 p-2 rounded">
-                        <strong>Premium Lastik:</strong> ahmet@premiumlastik.com / premium123
+                      <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                        <strong>ULTRA Plan:</strong> ahmet@premiumlastik.com / ahmet123
+                        <div className="text-blue-600 font-medium">Premium Lastik AŞ - Tüm dashboard sayfalarına erişim</div>
                       </div>
-                      <div className="bg-gray-50 p-2 rounded">
-                        <strong>Hızlı Lastik:</strong> mehmet@hizlilastik.com / hizli123
-                      </div>
-                      <div className="bg-gray-50 p-2 rounded">
-                        <strong>Mega Lastik:</strong> ali@megalastikmarket.com / mega123
+                      <div className="bg-green-50 p-2 rounded border border-green-200">
+                        <strong>PRO Plan:</strong> mehmet@hizlilastik.com / mehmet123
+                        <div className="text-green-600 font-medium">Hızlı Lastik Ltd - Sadece müşteri takibi</div>
                       </div>
                     </div>
                   </div>

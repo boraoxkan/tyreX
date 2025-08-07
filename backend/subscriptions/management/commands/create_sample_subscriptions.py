@@ -37,72 +37,42 @@ class Command(BaseCommand):
         
         plans_data = [
             {
-                'name': 'Ücretsiz Plan',
-                'plan_type': 'free',
-                'description': 'Başlangıç seviyesi işletmeler için temel özellikler',
-                'monthly_price': Decimal('0.00'),
-                'yearly_price': Decimal('0.00'),
-                'max_users': 1,
-                'max_warehouses': 1,
-                'max_products': 50,
-                'api_rate_limit': 100,
+                'name': 'PRO',
+                'plan_type': 'pro',
+                'description': 'Müşteri takibi ve yönetimi özellikleri',
+                'monthly_price': Decimal('300.00'),
+                'yearly_price': Decimal('3000.00'),
+                'max_users': 5,
+                'max_warehouses': 3,
+                'max_products': 1000,
+                'api_rate_limit': 2000,
                 'marketplace_access': False,
                 'dynamic_pricing': False,
                 'advanced_analytics': False,
                 'priority_support': False,
+                'customer_management_access': True,
+                'full_dashboard_access': False,
                 'tyrex_commission_rate': Decimal('0.00'),
                 'sort_order': 1
             },
             {
-                'name': 'Temel Plan',
-                'plan_type': 'basic',
-                'description': 'Küçük işletmeler için pazaryeri erişimi dahil',
-                'monthly_price': Decimal('299.00'),
-                'yearly_price': Decimal('2990.00'),  # 2 aylık indirim
-                'max_users': 3,
-                'max_warehouses': 2,
-                'max_products': 500,
-                'api_rate_limit': 1000,
-                'marketplace_access': True,
-                'dynamic_pricing': True,
-                'advanced_analytics': False,
-                'priority_support': False,
-                'tyrex_commission_rate': Decimal('2.50'),
-                'sort_order': 2
-            },
-            {
-                'name': 'Premium Plan',
-                'plan_type': 'premium',
-                'description': 'Orta ölçekli işletmeler için gelişmiş özellikler',
-                'monthly_price': Decimal('599.00'),
-                'yearly_price': Decimal('5990.00'),  # 2 aylık indirim
-                'max_users': 10,
-                'max_warehouses': 5,
-                'max_products': 2000,
-                'api_rate_limit': 5000,
-                'marketplace_access': True,
-                'dynamic_pricing': True,
-                'advanced_analytics': True,
-                'priority_support': False,
-                'tyrex_commission_rate': Decimal('2.00'),  # Daha düşük komisyon
-                'sort_order': 3
-            },
-            {
-                'name': 'Kurumsal Plan',
-                'plan_type': 'enterprise',
-                'description': 'Büyük işletmeler için sınırsız özellikler',
-                'monthly_price': Decimal('1299.00'),
-                'yearly_price': Decimal('12990.00'),  # 2 aylık indirim
-                'max_users': 50,
-                'max_warehouses': 20,
-                'max_products': 10000,
-                'api_rate_limit': 20000,
+                'name': 'ULTRA',
+                'plan_type': 'ultra',
+                'description': 'Tam erişim - Tüm dashboard sayfalarına erişim',
+                'monthly_price': Decimal('4500.00'),
+                'yearly_price': Decimal('45000.00'),
+                'max_users': 20,
+                'max_warehouses': 10,
+                'max_products': 5000,
+                'api_rate_limit': 10000,
                 'marketplace_access': True,
                 'dynamic_pricing': True,
                 'advanced_analytics': True,
                 'priority_support': True,
-                'tyrex_commission_rate': Decimal('1.50'),  # En düşük komisyon
-                'sort_order': 4
+                'customer_management_access': True,
+                'full_dashboard_access': True,
+                'tyrex_commission_rate': Decimal('2.00'),
+                'sort_order': 2
             }
         ]
         
@@ -128,6 +98,7 @@ class Command(BaseCommand):
         # Planları al
         try:
             free_plan = SubscriptionPlan.objects.get(plan_type='free')
+            customer_plan = SubscriptionPlan.objects.get(plan_type='customer_access')
             basic_plan = SubscriptionPlan.objects.get(plan_type='basic')
             premium_plan = SubscriptionPlan.objects.get(plan_type='premium')
             enterprise_plan = SubscriptionPlan.objects.get(plan_type='enterprise')
@@ -152,7 +123,7 @@ class Command(BaseCommand):
                 'current_warehouses': 2,
                 'current_products': 150,
                 'api_calls_this_month': 450,
-                'notes': 'Premium müşteri - pazaryeri aktif kullanıcısı'
+                'notes': 'Premium müşteri - Tüm özellikler aktif'
             },
             {
                 'company_name': 'Hızlı Lastik Zinciri',
@@ -163,18 +134,18 @@ class Command(BaseCommand):
                 'current_warehouses': 1,
                 'current_products': 80,
                 'api_calls_this_month': 120,
-                'notes': 'Yıllık ödeme ile temel plan kullanıcısı'
+                'notes': 'Pazaryeri odaklı temel plan kullanıcısı'
             },
             {
                 'company_name': 'Aile İşletmesi Lastikçi',
-                'plan': free_plan,
-                'status': 'trialing',
+                'plan': customer_plan,
+                'status': 'active',
                 'billing_cycle': 'monthly',
                 'current_users': 1,
                 'current_warehouses': 1,
                 'current_products': 25,
-                'api_calls_this_month': 15,
-                'notes': 'Deneme sürümünde - pazaryeri erişimi yok'
+                'api_calls_this_month': 35,
+                'notes': 'Müşteri takibi odaklı - 300₺ paket'
             },
             {
                 'company_name': 'Mega Lastik Market',
@@ -185,18 +156,18 @@ class Command(BaseCommand):
                 'current_warehouses': 3,
                 'current_products': 800,
                 'api_calls_this_month': 2500,
-                'notes': 'Kurumsal müşteri - en yüksek seviye özellikler'
+                'notes': 'Kurumsal müşteri - En yüksek seviye özellikler'
             },
             {
                 'company_name': 'Üniversite Lastik Servisi',
-                'plan': basic_plan,
+                'plan': free_plan,
                 'status': 'trialing',
                 'billing_cycle': 'monthly',
                 'current_users': 1,
                 'current_warehouses': 1,
-                'current_products': 45,
-                'api_calls_this_month': 75,
-                'notes': 'Temel plan deneme sürümünde'
+                'current_products': 25,
+                'api_calls_this_month': 15,
+                'notes': 'Ücretsiz plan deneme sürümünde'
             }
         ]
         

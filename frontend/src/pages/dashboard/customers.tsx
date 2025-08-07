@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import AuthGuard from '@/components/auth/AuthGuard';
+import SubscriptionGuard from '@/components/auth/SubscriptionGuard';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/store/authStore';
@@ -183,6 +184,10 @@ const CustomersPage: React.FC = () => {
       </Head>
 
       <Layout title="Müşterilerim">
+        <SubscriptionGuard 
+          requiredPermission="customer_management"
+          fallbackMessage="Müşteri takibi ve yönetim özelliklerine erişmek için 300₺ paket gereklidir."
+        >
         <div className="space-y-6">
           {/* Error Alert */}
           {error && (
@@ -512,6 +517,7 @@ const CustomersPage: React.FC = () => {
             </div>
           </div>
         </div>
+        </SubscriptionGuard>
       </Layout>
     </AuthGuard>
   );

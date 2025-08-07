@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { ShoppingCart, Filter, Search, Package, TrendingUp, Users, Star } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import AuthGuard from '@/components/auth/AuthGuard';
+import SubscriptionGuard from '@/components/auth/SubscriptionGuard';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { marketApi, MarketProduct, MarketplaceStats } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -51,13 +52,17 @@ const MarketplacePage: React.FC = () => {
   };
 
   return (
-    <AuthGuard requireMarketplace={true}>
+    <AuthGuard>
       <Head>
         <title>Pazaryeri - Tyrex B2B</title>
         <meta name="description" content="Lastik pazaryerinde binlerce ürün keşfedin" />
       </Head>
 
       <Layout title="Pazaryeri">
+        <SubscriptionGuard 
+          requiredPermission="marketplace"
+          fallbackMessage="Pazaryeri erişimi için temel abonelik gereklidir."
+        >
         <div className="space-y-6">
           {/* Search and Filters */}
           <div className="bg-white rounded-lg shadow p-6">
@@ -237,6 +242,7 @@ const MarketplacePage: React.FC = () => {
             )
           )}
         </div>
+        </SubscriptionGuard>
       </Layout>
     </AuthGuard>
   );

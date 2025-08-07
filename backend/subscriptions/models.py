@@ -11,10 +11,8 @@ class SubscriptionPlan(models.Model):
     Abonelik planları - Farklı seviyeler ve özellikler
     """
     PLAN_TYPES = [
-        ('free', _('Ücretsiz')),
-        ('basic', _('Temel')),
-        ('premium', _('Premium')),
-        ('enterprise', _('Kurumsal')),
+        ('pro', _('PRO')),
+        ('ultra', _('ULTRA')),
     ]
     
     name = models.CharField(_('Plan Adı'), max_length=100)
@@ -85,6 +83,16 @@ class SubscriptionPlan(models.Model):
         _('Öncelikli Destek'),
         default=False,
         help_text=_('Öncelikli müşteri desteği')
+    )
+    customer_management_access = models.BooleanField(
+        _('Müşteri Takibi Erişimi'),
+        default=False,
+        help_text=_('Müşteri yönetim sayfasına erişebilir mi?')
+    )
+    full_dashboard_access = models.BooleanField(
+        _('Tam Dashboard Erişimi'),
+        default=False,
+        help_text=_('Tüm dashboard sayfalarına erişebilir mi?')
     )
     
     # Komisyon Oranları (Pazaryeri için)
@@ -279,6 +287,14 @@ class Subscription(models.Model):
     def can_use_dynamic_pricing(self):
         """Dinamik fiyatlandırma kullanabilir mi?"""
         return self.is_active_or_trialing() and self.plan.dynamic_pricing
+    
+    def can_access_customer_management(self):
+        """Müşteri yönetim sayfasına erişebilir mi?"""
+        return self.is_active_or_trialing() and self.plan.customer_management_access
+    
+    def can_access_full_dashboard(self):
+        """Tüm dashboard sayfalarına erişebilir mi?"""
+        return self.is_active_or_trialing() and self.plan.full_dashboard_access
     
     def get_remaining_api_calls(self):
         """Kalan API çağrısı sayısı"""

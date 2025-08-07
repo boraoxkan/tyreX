@@ -57,6 +57,24 @@ const SubscriptionPage: React.FC = () => {
         ]
       },
       {
+        id: 'customer_access',
+        name: 'Müşteri Takibi',
+        type: 'customer_access',
+        monthly_price: 300,
+        yearly_price: 3000,
+        description: 'Müşteri yönetimi için',
+        features: [
+          '3 kullanıcı',
+          '2 depo',
+          '200 ürün limiti',
+          'Müşteri takip sistemi',
+          'Lastik oteli yönetimi',
+          'Müşteri raporları',
+          'E-posta desteği'
+        ],
+        current: subscription?.plan === 'Müşteri Takibi'
+      },
+      {
         id: 'basic',
         name: 'Temel',
         type: 'basic',
@@ -72,25 +90,28 @@ const SubscriptionPage: React.FC = () => {
           'Detaylı raporlar',
           'Öncelikli destek'
         ],
-        popular: true,
         current: subscription?.plan === 'Temel Plan'
       },
       {
         id: 'premium',
         name: 'Premium',
         type: 'premium',
-        monthly_price: 599,
-        yearly_price: 5990,
-        description: 'Büyüyen işletmeler için',
+        monthly_price: 4500,
+        yearly_price: 45000,
+        description: 'Tam erişim için',
         features: [
           '10 kullanıcı',
           '5 depo',
           '2000 ürün limiti',
-          'Gelişmiş pazaryeri',
-          'AI destekli analitik',
-          'Özel entegrasyonlar',
+          'Tüm dashboard özellikleri',
+          'Müşteri takip sistemi',
+          'Pazaryeri erişimi',
+          'Gelişmiş analitik',
+          'AI destekli özellikler',
           '7/24 destek'
-        ]
+        ],
+        popular: true,
+        current: subscription?.plan === 'Premium'
       },
       {
         id: 'enterprise',
@@ -345,6 +366,7 @@ const SubscriptionPage: React.FC = () => {
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4">Özellik</th>
                       <th className="text-center py-3 px-4">Ücretsiz</th>
+                      <th className="text-center py-3 px-4">Müşteri Takibi</th>
                       <th className="text-center py-3 px-4">Temel</th>
                       <th className="text-center py-3 px-4">Premium</th>
                       <th className="text-center py-3 px-4">Kurumsal</th>
@@ -355,6 +377,7 @@ const SubscriptionPage: React.FC = () => {
                       <td className="py-3 px-4 font-medium">Kullanıcı Sayısı</td>
                       <td className="text-center py-3 px-4">1</td>
                       <td className="text-center py-3 px-4">3</td>
+                      <td className="text-center py-3 px-4">3</td>
                       <td className="text-center py-3 px-4">10</td>
                       <td className="text-center py-3 px-4">Sınırsız</td>
                     </tr>
@@ -362,8 +385,27 @@ const SubscriptionPage: React.FC = () => {
                       <td className="py-3 px-4 font-medium">Depo Sayısı</td>
                       <td className="text-center py-3 px-4">1</td>
                       <td className="text-center py-3 px-4">2</td>
+                      <td className="text-center py-3 px-4">2</td>
                       <td className="text-center py-3 px-4">5</td>
                       <td className="text-center py-3 px-4">Sınırsız</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-4 font-medium">Müşteri Takibi</td>
+                      <td className="text-center py-3 px-4">
+                        <X className="h-5 w-5 text-error-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <X className="h-5 w-5 text-error-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                      </td>
                     </tr>
                     <tr>
                       <td className="py-3 px-4 font-medium">Pazaryeri Erişimi</td>
@@ -371,6 +413,9 @@ const SubscriptionPage: React.FC = () => {
                         <X className="h-5 w-5 text-error-500 mx-auto" />
                       </td>
                       <td className="text-center py-3 px-4">
+                        <X className="h-5 w-5 text-error-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
                         <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
                       </td>
                       <td className="text-center py-3 px-4">
@@ -381,12 +426,15 @@ const SubscriptionPage: React.FC = () => {
                       </td>
                     </tr>
                     <tr>
-                      <td className="py-3 px-4 font-medium">Dinamik Fiyatlandırma</td>
+                      <td className="py-3 px-4 font-medium">Tam Dashboard</td>
                       <td className="text-center py-3 px-4">
                         <X className="h-5 w-5 text-error-500 mx-auto" />
                       </td>
                       <td className="text-center py-3 px-4">
-                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                        <X className="h-5 w-5 text-error-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <X className="h-5 w-5 text-error-500 mx-auto" />
                       </td>
                       <td className="text-center py-3 px-4">
                         <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />

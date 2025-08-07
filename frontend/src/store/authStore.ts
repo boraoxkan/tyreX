@@ -28,6 +28,8 @@ interface AuthState {
     status: string | null;
     marketplace_access: boolean;
     dynamic_pricing: boolean;
+    customer_management_access: boolean;
+    full_dashboard_access: boolean;
     trial_end_date: string | null;
   } | null;
   
@@ -215,6 +217,8 @@ export const useAuthStore = create<AuthState>()(
                 status: 'trialing', // This should come from API
                 marketplace_access: true, // This should come from API
                 dynamic_pricing: true, // This should come from API
+                customer_management_access: false, // This should come from API
+                full_dashboard_access: false, // This should come from API
                 trial_end_date: null // This should come from API
               };
             }
@@ -318,6 +322,8 @@ export const useAuth = () => {
     isAuthenticated: !!user,
     hasMarketplaceAccess: subscription?.marketplace_access || false,
     hasDynamicPricing: subscription?.dynamic_pricing || false,
+    hasCustomerManagementAccess: subscription?.customer_management_access || false,
+    hasFullDashboardAccess: subscription?.full_dashboard_access || false,
   };
 };
 

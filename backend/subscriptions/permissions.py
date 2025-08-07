@@ -131,6 +131,50 @@ class APIRateLimitPermission(IsSubscribed):
         return True
 
 
+class HasCustomerManagementAccess(IsSubscribed):
+    """
+    Müşteri yönetim sayfasına erişim için özel izin sınıfı
+    """
+    
+    def has_permission(self, request, view):
+        # Önce temel abonelik kontrolü
+        if not super().has_permission(request, view):
+            return False
+        
+        # Müşteri yönetim erişimi var mı kontrol et
+        subscription = request.user.company.subscription
+        if not subscription.can_access_customer_management():
+            self.message = _(
+                'Müşteri takibi özelliğine erişmek için 300₺ paket gereklidir. '
+                'Mevcut planınız bu özelliği desteklemiyor.'
+            )
+            return False
+        
+        return True
+
+
+class HasFullDashboardAccess(IsSubscribed):
+    """
+    Tüm dashboard sayfalarına erişim için özel izin sınıfı
+    """
+    
+    def has_permission(self, request, view):
+        # Önce temel abonelik kontrolü
+        if not super().has_permission(request, view):
+            return False
+        
+        # Tam dashboard erişimi var mı kontrol et
+        subscription = request.user.company.subscription
+        if not subscription.can_access_full_dashboard():
+            self.message = _(
+                'Bu özelliğe erişmek için 4500₺ premium paket gereklidir. '
+                'Mevcut planınız bu özelliği desteklemiyor.'
+            )
+            return False
+        
+        return True
+
+
 class IsSubscribedOrReadOnly(permissions.BasePermission):
     """
     Aboneliği olanlar CRUD yapabilir, olmayanlar sadece READ yapabilir

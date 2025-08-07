@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import AuthGuard from '@/components/auth/AuthGuard';
+import SubscriptionGuard from '@/components/auth/SubscriptionGuard';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/store/authStore';
 import { formatCurrency, formatNumber } from '@/lib/utils';
@@ -327,6 +328,10 @@ const MyStockPage: React.FC = () => {
       </Head>
 
       <Layout title="Stok Yönetimi">
+        <SubscriptionGuard 
+          requiredPermission="full_dashboard"
+          fallbackMessage="Stok yönetimi özelliğine erişmek için 4500₺ premium paket gereklidir."
+        >
         <div className="space-y-6">
           {/* Header with Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -801,6 +806,7 @@ const MyStockPage: React.FC = () => {
             </div>
           )}
         </div>
+        </SubscriptionGuard>
       </Layout>
     </AuthGuard>
   );
