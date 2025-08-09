@@ -68,16 +68,37 @@ const OrdersPage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Siparişlerim - Tyrex B2B</title>
+        <title>Siparişlerim - tyreX</title>
         <meta name="description" content="Siparişlerinizi görüntüleyin ve takip edin" />
       </Head>
 
-      <Layout title="Siparişlerim">
+      <Layout title={
+        <div className="flex items-center gap-3">
+          Siparişlerim
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+            Yakında!
+          </span>
+        </div>
+      }>
         <SubscriptionGuard 
           requiredPermission="full_dashboard"
-          fallbackMessage="Sipariş yönetimi özelliğine erişmek için 4500₺ premium paket gereklidir."
+          fallbackMessage="Sipariş yönetimi özelliğine erişmek için premium paket gereklidir."
         >
         <div className="space-y-6">
+          {/* Coming Soon Notice */}
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 mr-3" />
+              <div>
+                <h3 className="text-sm font-medium text-orange-900">
+                  Sipariş Yönetimi Yakında
+                </h3>
+                <p className="mt-1 text-sm text-orange-700">
+                  Gelişmiş sipariş takibi, otomatik bildirimler ve detaylı raporlama özellikleri çok yakında!
+                </p>
+              </div>
+            </div>
+          </div>
           {/* Error Alert */}
           {error && (
             <div className="alert alert-error">

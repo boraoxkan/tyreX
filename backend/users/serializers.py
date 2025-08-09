@@ -2,16 +2,51 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from companies.models import Company, RetailerWholesaler
+from subscriptions.models import Subscription, SubscriptionPlan
 
 User = get_user_model()
 
+class SubscriptionPlanSerializer(serializers.ModelSerializer):
+    """Abonelik planı için basit serializer"""
+    class Meta:
+        model = SubscriptionPlan
+        fields = ['name', 'plan_type']
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    """Şirket aboneliği için detaylı serializer"""
+    plan = SubscriptionPlanSerializer(read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    # Frontend'in ihtiyaç duyduğu erişim hakları
+    customer_management_access = serializers.BooleanField(source='can_access_customer_management', read_only=True)
+    full_dashboard_access = serializers.BooleanField(source='can_access_full_dashboard', read_only=True)
+    marketplace_access = serializers.BooleanField(source='can_access_marketplace', read_only=True)
+    dynamic_pricing = serializers.BooleanField(source='can_use_dynamic_pricing', read_only=True)
+    inventory_management_access = serializers.BooleanField(source='can_access_inventory_management', read_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = [
+            'plan',
+            'status',
+            'status_display',
+            'trial_end_date',
+            'current_period_end',
+            'customer_management_access',
+            'full_dashboard_access',
+            'marketplace_access',
+            'dynamic_pricing',
+            'inventory_management_access'
+        ]
+
 class UserProfileSerializer(serializers.ModelSerializer):
     """
-    Kullanıcı profili serializer'ı - Company ilişkili versiyon
+    Kullanıcı profili serializer'ı - Abonelik bilgisi dahil
     """
-    company_name = serializers.SerializerMethodField()
-    company_type = serializers.SerializerMethodField()
-    company_id = serializers.SerializerMethodField()
+    company_name = serializers.CharField(source='company.name', read_only=True)
+    company_type = serializers.CharField(source='company.get_company_type_display', read_only=True)
+    company_id = serializers.IntegerField(source='company.id', read_only=True)
+    subscription = serializers.SerializerMethodField()
     
     class Meta:
         model = User
@@ -24,21 +59,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'is_active',
             'company_id',
             'company_name',
-            'company_type'
+            'company_type',
+            'subscription'  # Eklendi
         ]
-        read_only_fields = ['id', 'email', 'date_joined', 'is_active', 'company_id']
-    
-    def get_company_id(self, obj):
-        """Şirket ID'sini döndürür"""
-        return obj.company.id if obj.company else None
-    
-    def get_company_name(self, obj):
-        """Şirket adını döndürür"""
-        return obj.company.name if obj.company else None
-    
-    def get_company_type(self, obj):
-        """Şirket türünü döndürür"""
-        return obj.company.get_company_type_display() if obj.company else None
+        read_only_fields = fields
+
+    def get_subscription(self, obj):
+        """Kullanıcının şirketine ait aktif aboneliği döndürür"""
+        if not obj.company:
+            return None
+        
+        try:
+            # Şirketin aktif veya deneme sürümündeki aboneliğini al
+            subscription = Subscription.objects.get(
+                company=obj.company,
+                status__in=['active', 'trialing']
+            )
+            return SubscriptionSerializer(subscription).data
+        except Subscription.DoesNotExist:
+            return None
 
 
 class RetailerWholesalerSerializer(serializers.ModelSerializer):

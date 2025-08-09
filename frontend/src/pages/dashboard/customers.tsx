@@ -179,7 +179,7 @@ const CustomersPage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Müşterilerim - Tyrex B2B</title>
+        <title>Müşterilerim - tyreX</title>
         <meta name="description" content="Müşteri yönetimi ve takip sistemi" />
       </Head>
 

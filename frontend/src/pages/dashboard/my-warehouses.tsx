@@ -219,14 +219,14 @@ const MyWarehousesPage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Depolarım - Tyrex B2B</title>
+        <title>Depolarım - tyreX</title>
         <meta name="description" content="Depolarınızı yönetin" />
       </Head>
 
       <Layout title="Depolarım">
         <SubscriptionGuard 
-          requiredPermission="full_dashboard"
-          fallbackMessage="Depo yönetimi özelliğine erişmek için 4500₺ premium paket gereklidir."
+          requiredPermission="inventory_management"
+          fallbackMessage="Depo yönetimi özelliğine erişmek için PRO aboneliği gereklidir."
         >
         <div className="space-y-6">
           {/* Header with Add Button */}

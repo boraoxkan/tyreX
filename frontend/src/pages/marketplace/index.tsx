@@ -54,7 +54,7 @@ const MarketplacePage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Pazaryeri - Tyrex B2B</title>
+        <title>Pazaryeri - tyreX</title>
         <meta name="description" content="Lastik pazaryerinde binlerce ürün keşfedin" />
       </Head>
 

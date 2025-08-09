@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 
 interface SubscriptionGuardProps {
   children: React.ReactNode;
-  requiredPermission: 'customer_management' | 'full_dashboard' | 'marketplace';
+  requiredPermission: 'inventory_management' | 'customer_management' | 'full_dashboard' | 'marketplace';
   fallbackMessage?: string;
 }
 
@@ -19,6 +19,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
   const { 
     isLoading, 
     isInitialized, 
+    hasInventoryManagementAccess,
     hasCustomerManagementAccess,
     hasFullDashboardAccess,
     hasMarketplaceAccess,
@@ -41,17 +42,23 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
   let requiredPrice = '';
 
   switch (requiredPermission) {
-    case 'customer_management':
-      hasAccess = hasCustomerManagementAccess;
-      upgradeMessage = upgradeMessage || 'Müşteri takibi özelliğine erişmek için PRO aboneliği gereklidir.';
+    case 'inventory_management':
+      hasAccess = hasInventoryManagementAccess;
+      upgradeMessage = upgradeMessage || 'Stok ve depo yönetimi özelliğine erişmek için PRO aboneliği gereklidir.';
       requiredPlan = 'PRO';
       requiredPrice = '300₺/ay';
       break;
+    case 'customer_management':
+      hasAccess = hasCustomerManagementAccess;
+      upgradeMessage = upgradeMessage || 'Müşteri takibi özelliğine erişmek için PRO PLUS aboneliği gereklidir.';
+      requiredPlan = 'PRO PLUS';
+      requiredPrice = '750₺/ay';
+      break;
     case 'full_dashboard':
       hasAccess = hasFullDashboardAccess;
-      upgradeMessage = upgradeMessage || 'Bu özelliğe erişmek için ULTRA aboneliği gereklidir.';
-      requiredPlan = 'ULTRA';
-      requiredPrice = '4500₺/ay';
+      upgradeMessage = upgradeMessage || 'Bu özelliğe erişmek için PRO PLUS aboneliği gereklidir.';
+      requiredPlan = 'PRO PLUS';
+      requiredPrice = '750₺/ay';
       break;
     case 'marketplace':
       hasAccess = hasMarketplaceAccess;
@@ -106,7 +113,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
 
       {subscription && (
         <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-          Mevcut planınız: <span className="font-medium">{subscription.plan || 'Ücretsiz'}</span>
+          Mevcut planınız: <span className="font-medium">{subscription.plan?.name || 'Ücretsiz'}</span>
         </div>
       )}
     </div>

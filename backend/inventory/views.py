@@ -6,7 +6,7 @@ from django.db.models import Q, Sum, Count
 from django.db import transaction
 from django.utils import timezone
 from decimal import Decimal
-from .models import Warehouse, StockItem
+from .models import Warehouse, StockItem, PriceHistory
 from .serializers import (
     WarehouseSerializer,
     WarehouseCreateUpdateSerializer,
@@ -14,7 +14,8 @@ from .serializers import (
     StockItemCreateUpdateSerializer,
     StockMovementSerializer,
     WarehouseSummarySerializer,
-    StockSummarySerializer
+    StockSummarySerializer,
+    BulkPriceUpdateSerializer
 )
 from products.models import Product
 
@@ -173,13 +174,23 @@ class StockItemViewSet(viewsets.ModelViewSet):
                 'product',
                 'product__category',
                 'warehouse'
-            )
+            ).prefetch_related('price_history')
             
             # Filtreleme parametreleri
             warehouse_id = self.request.query_params.get('warehouse')
             product_id = self.request.query_params.get('product')
+            category_id = self.request.query_params.get('category')
+            brand = self.request.query_params.get('brand')
             stock_status = self.request.query_params.get('status')
             search = self.request.query_params.get('search')
+            
+            # Ürün özellik filtreleri
+            tire_width = self.request.query_params.get('tire_width')
+            tire_aspect_ratio = self.request.query_params.get('tire_aspect_ratio')
+            tire_diameter = self.request.query_params.get('tire_diameter')
+            battery_ampere = self.request.query_params.get('battery_ampere')
+            rim_size = self.request.query_params.get('rim_size')
+            rim_bolt_pattern = self.request.query_params.get('rim_bolt_pattern')
             
             if warehouse_id:
                 queryset = queryset.filter(warehouse_id=warehouse_id)
@@ -187,12 +198,38 @@ class StockItemViewSet(viewsets.ModelViewSet):
             if product_id:
                 queryset = queryset.filter(product_id=product_id)
             
+            if category_id:
+                queryset = queryset.filter(product__category_id=category_id)
+            
+            if brand:
+                queryset = queryset.filter(product__brand__icontains=brand)
+            
+            # Ürün özellik filtreleri
+            if tire_width:
+                queryset = queryset.filter(product__tire_width=tire_width)
+            
+            if tire_aspect_ratio:
+                queryset = queryset.filter(product__tire_aspect_ratio=tire_aspect_ratio)
+            
+            if tire_diameter:
+                queryset = queryset.filter(product__tire_diameter=tire_diameter)
+            
+            if battery_ampere:
+                queryset = queryset.filter(product__battery_ampere=battery_ampere)
+            
+            if rim_size:
+                queryset = queryset.filter(product__rim_size=rim_size)
+            
+            if rim_bolt_pattern:
+                queryset = queryset.filter(product__rim_bolt_pattern=rim_bolt_pattern)
+            
             if search:
                 queryset = queryset.filter(
                     Q(product__name__icontains=search) |
                     Q(product__sku__icontains=search) |
                     Q(product__brand__icontains=search) |
-                    Q(location_code__icontains=search)
+                    Q(location_code__icontains=search) |
+                    Q(barcode__icontains=search)
                 )
             
             # Stok durumuna göre filtreleme
@@ -211,6 +248,8 @@ class StockItemViewSet(viewsets.ModelViewSet):
     
     def get_serializer_class(self):
         """Action'a göre uygun serializer seçer"""
+        if self.action == 'bulk_price_update':
+            return BulkPriceUpdateSerializer
         if self.action in ['create', 'update', 'partial_update']:
             return StockItemCreateUpdateSerializer
         return StockItemSerializer
@@ -260,10 +299,12 @@ class StockItemViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_201_CREATED)
     
     def update(self, request, *args, **kwargs):
-        """Stok kalemi güncelleme"""
+        """Stok kalemi güncelleme ve fiyat değişikliği kaydı"""
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        old_quantity = instance.quantity
+        
+        old_cost_price = instance.cost_price
+        old_sale_price = instance.sale_price
         
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -271,14 +312,22 @@ class StockItemViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             stock_item = serializer.save()
             
-            # Miktar değiştiyse son hareket tarihlerini güncelle
-            new_quantity = stock_item.quantity
-            if new_quantity != old_quantity:
-                if new_quantity > old_quantity:
-                    stock_item.last_inbound_date = timezone.now()
-                else:
-                    stock_item.last_outbound_date = timezone.now()
-                stock_item.save()
+            new_cost_price = stock_item.cost_price
+            new_sale_price = stock_item.sale_price
+            
+            price_changed = (old_cost_price != new_cost_price) or (old_sale_price != new_sale_price)
+            
+            if price_changed:
+                PriceHistory.objects.create(
+                    stock_item=stock_item,
+                    old_cost_price=old_cost_price,
+                    old_sale_price=old_sale_price,
+                    new_cost_price=new_cost_price,
+                    new_sale_price=new_sale_price,
+                    change_type='set', # Manuel değişiklik
+                    changed_by=request.user.get_full_name() or request.user.username,
+                    change_reason=request.data.get('change_reason', 'Manuel güncelleme')
+                )
         
         # Response için detaylı serializer kullan
         response_serializer = StockItemSerializer(
@@ -308,6 +357,86 @@ class StockItemViewSet(viewsets.ModelViewSet):
         return Response({
             'message': f'{product_name} - {warehouse_name} stok kalemi başarıyla silindi.'
         })
+    
+    @action(detail=False, methods=['post'], url_path='bulk-price-update')
+    def bulk_price_update(self, request):
+        """
+        Toplu fiyat güncelleme (zam/indirim)
+        POST /api/v1/inventory/stock-items/bulk-price-update/
+        """
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        
+        data = serializer.validated_data
+        stock_item_ids = data['stock_item_ids']
+        change_type = data['change_type']
+        value_type = data['value_type']
+        value = data['value']
+        price_type = data['price_type']
+        change_reason = data.get('change_reason', '')
+        
+        queryset = StockItem.objects.filter(id__in=stock_item_ids)
+        updated_items = []
+        history_records = []
+
+        try:
+            with transaction.atomic():
+                for item in queryset:
+                    old_cost_price = item.cost_price
+                    old_sale_price = item.sale_price
+                    
+                    new_cost_price = old_cost_price
+                    new_sale_price = old_sale_price
+                    
+                    change_amount_val = None
+                    change_percentage_val = None
+
+                    if value_type == 'percentage':
+                        multiplier = (Decimal('100') + (value if change_type == 'increase' else -value)) / Decimal('100')
+                        change_percentage_val = value
+                        if price_type in ['cost_price', 'both'] and item.cost_price is not None:
+                            new_cost_price = (item.cost_price * multiplier).quantize(Decimal('0.0001'))
+                        if price_type in ['sale_price', 'both'] and item.sale_price is not None:
+                            new_sale_price = (item.sale_price * multiplier).quantize(Decimal('0.0001'))
+                    else: # fixed
+                        change_amount_val = value if change_type == 'increase' else -value
+                        if price_type in ['cost_price', 'both'] and item.cost_price is not None:
+                            new_cost_price = item.cost_price + change_amount_val
+                        if price_type in ['sale_price', 'both'] and item.sale_price is not None:
+                            new_sale_price = item.sale_price + change_amount_val
+
+                    item.cost_price = new_cost_price
+                    item.sale_price = new_sale_price
+                    item.save()
+                    updated_items.append(item)
+                    
+                    history_records.append(PriceHistory(
+                        stock_item=item,
+                        old_cost_price=old_cost_price,
+                        old_sale_price=old_sale_price,
+                        new_cost_price=new_cost_price,
+                        new_sale_price=new_sale_price,
+                        change_type=change_type,
+                        change_percentage=change_percentage_val,
+                        change_amount=change_amount_val,
+                        changed_by=request.user.get_full_name() or request.user.username,
+                        change_reason=change_reason
+                    ))
+
+                PriceHistory.objects.bulk_create(history_records)
+
+        except Exception as e:
+            return Response({
+                'error': 'Toplu fiyat güncelleme sırasında bir hata oluştu.',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        response_serializer = StockItemSerializer(updated_items, many=True, context={'request': request})
+        return Response({
+            'message': f'{len(updated_items)} adet stok kaleminin fiyatı başarıyla güncellendi.',
+            'updated_items': response_serializer.data
+        }, status=status.HTTP_200_OK)
+
     
     @action(detail=True, methods=['post'])
     def stock_movement(self, request, pk=None):

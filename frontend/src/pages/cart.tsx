@@ -161,12 +161,34 @@ const CartPage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Sepetim ({totalItems}) - Tyrex B2B</title>
+        <title>Sepetim ({totalItems}) - tyreX</title>
         <meta name="description" content="Alışveriş sepetiniz" />
       </Head>
 
-      <Layout title={`Sepetim (${totalItems} ürün)`}>
+      <Layout title={
+        <div className="flex items-center gap-3">
+          {`Sepetim (${totalItems} ürün)`}
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            Yakında daha gelişmiş özellikler!
+          </span>
+        </div>
+      }>
         <div className="max-w-6xl mx-auto space-y-6">
+          {/* Coming Soon Notice */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 mr-3" />
+              <div>
+                <h3 className="text-sm font-medium text-blue-900">
+                  Sipariş Sistemi Geliştiriliyor
+                </h3>
+                <p className="mt-1 text-sm text-blue-700">
+                  Şu anda erken aşamada olduğumuz için sipariş özelliği aktif değil. 
+                  Yakında otomatik sipariş, toplu sipariş ve gelişmiş sepet yönetimi özellikleri eklenecek.
+                </p>
+              </div>
+            </div>
+          </div>
           {/* Breadcrumb */}
           <nav className="flex" aria-label="Breadcrumb">
             <ol className="inline-flex items-center space-x-1 md:space-x-3">

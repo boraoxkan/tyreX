@@ -321,7 +321,7 @@ const SettingsPage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Ayarlar - Tyrex B2B</title>
+        <title>Ayarlar - tyreX</title>
         <meta name="description" content="Hesap ayarlarınızı yönetin" />
       </Head>
 

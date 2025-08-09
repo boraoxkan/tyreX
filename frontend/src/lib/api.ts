@@ -30,6 +30,31 @@ export interface LoginResponse {
   user?: User;
 }
 
+export interface SubscriptionPlan {
+  id: number;
+  name: string;
+  plan_type: string;
+  description: string;
+  monthly_price: string;
+  yearly_price?: string;
+  max_users: number;
+  max_warehouses: number;
+  max_products: number;
+  api_rate_limit: number;
+  marketplace_access: boolean;
+  dynamic_pricing: boolean;
+  advanced_analytics: boolean;
+  priority_support: boolean;
+  customer_management_access: boolean;
+  full_dashboard_access: boolean;
+  features: string[];
+  tyrex_commission_rate: string;
+  sort_order: number;
+  created_at: string;
+  popular?: boolean;
+  cta?: string;
+}
+
 export interface RegisterRequest {
   email: string;
   password: string;
@@ -65,6 +90,22 @@ export interface RegisterResponse {
 }
 
 // User Types
+export interface Subscription {
+  plan: {
+    name: string;
+    plan_type: 'pro' | 'ultra' | string;
+  };
+  status: string;
+  status_display: string;
+  trial_end_date: string | null;
+  current_period_end: string | null;
+  customer_management_access: boolean;
+  full_dashboard_access: boolean;
+  marketplace_access: boolean;
+  dynamic_pricing: boolean;
+  inventory_management_access: boolean;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -75,6 +116,7 @@ export interface User {
   company_id: number | null;
   company_name: string | null;
   company_type: string | null;
+  subscription: Subscription | null;
 }
 
 export interface Company {
@@ -545,12 +587,49 @@ export const userApi = {
   },
 };
 
+export const subscriptionsApi = {
+  getSubscriptionPlans: async (): Promise<SubscriptionPlan[]> => {
+    const response = await api.get<PaginatedResponse<SubscriptionPlan>>('/subscriptions/plans/');
+    return response.data.results;
+  },
+};
+
 export const companyApi = {
   // Get wholesalers list
   getWholesalers: async (): Promise<Wholesaler[]> => {
     const response = await api.get<Wholesaler[]>('/companies/wholesalers/');
     return response.data;
   },
+};
+
+// Product Types
+export interface Category {
+    id: number;
+    name: string;
+    slug: string;
+    parent: number | null;
+}
+
+export interface Product {
+    id: number;
+    name: string;
+    sku: string;
+    brand: string | null;
+    category: number;
+    category_name: string;
+    is_active: boolean;
+}
+
+export const productsApi = {
+    getProducts: async (params?: URLSearchParams): Promise<PaginatedResponse<Product>> => {
+        const url = params ? `/products/products/?${params.toString()}` : '/products/products/';
+        const response = await api.get<PaginatedResponse<Product>>(url);
+        return response.data;
+    },
+    getCategories: async (): Promise<PaginatedResponse<Category>> => {
+        const response = await api.get<PaginatedResponse<Category>>('/products/categories/');
+        return response.data;
+    },
 };
 
 export const inventoryApi = {
@@ -1002,6 +1081,28 @@ export const healthApi = {
     endpoints: any;
   }> => {
     const response = await api.get('/health/');
+    return response.data;
+  },
+};
+
+// Site Settings API Types
+export interface LoginPageBanner {
+  id: number;
+  title: string;
+  subtitle: string;
+  description: string;
+  image?: string;
+  link_url: string;
+  link_text: string;
+  background_color: string;
+  is_active: boolean;
+}
+
+// Site Settings API Functions
+export const siteSettingsApi = {
+  // Get active login page banners
+  getLoginBanners: async (): Promise<LoginPageBanner[]> => {
+    const response = await api.get<LoginPageBanner[]>('/site-settings/login-banners/');
     return response.data;
   },
 };

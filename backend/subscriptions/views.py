@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -17,7 +17,7 @@ class SubscriptionPlanViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = SubscriptionPlan.objects.filter(is_active=True).order_by('sort_order', 'monthly_price')
     serializer_class = SubscriptionPlanSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @action(detail=False, methods=['get'])
     def available_plans(self, request):

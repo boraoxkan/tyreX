@@ -1,22 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, ExternalLink } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import AuthGuard from '@/components/auth/AuthGuard';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAuth, useAuthActions } from '@/store/authStore';
 import { loginSchema, LoginFormData } from '@/lib/validations';
 import { cn } from '@/lib/utils';
+import { siteSettingsApi, LoginPageBanner } from '@/lib/api';
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
   const { error, isLoading } = useAuth();
   const { login, clearError } = useAuthActions();
   const [showPassword, setShowPassword] = useState(false);
+  const [banners, setBanners] = useState<LoginPageBanner[]>([]);
+  const [bannersLoading, setBannersLoading] = useState(true);
 
   const {
     register,
@@ -31,12 +34,42 @@ const LoginPage: React.FC = () => {
     },
   });
 
+  // Load banners
+  useEffect(() => {
+    const loadBanners = async () => {
+      try {
+        setBannersLoading(true);
+        const fetchedBanners = await siteSettingsApi.getLoginBanners();
+        setBanners(fetchedBanners);
+      } catch (error) {
+        console.error('Failed to load login banners:', error);
+        // Banner yüklenemese bile sayfanın çalışması için fallback banner
+        setBanners([{
+          id: 0,
+          title: 'B2B Tire Marketplace',
+          subtitle: "Türkiye'nin en büyük lastik pazaryerine hoş geldiniz",
+          description: '',
+          background_color: 'from-primary-600 to-primary-800',
+          is_active: true,
+          link_url: '',
+          link_text: ''
+        }]);
+      } finally {
+        setBannersLoading(false);
+      }
+    };
+
+    loadBanners();
+  }, []);
+
   const onSubmit = async (data: LoginFormData) => {
     try {
       clearError();
       clearErrors();
       
+      console.log('Attempting login...');
       await login(data);
+      console.log('Login function completed.');
       
       // Redirect to return URL or dashboard
       const returnUrl = router.query.returnUrl as string;
@@ -44,6 +77,7 @@ const LoginPage: React.FC = () => {
         ? returnUrl 
         : '/dashboard';
       
+      console.log('Redirecting to:', redirectUrl);
       router.push(redirectUrl);
     } catch (error) {
       // Error is handled by the store
@@ -68,7 +102,7 @@ const LoginPage: React.FC = () => {
                   <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
                     <span className="text-white font-bold text-xl">T</span>
                   </div>
-                  <span className="text-2xl font-bold text-gray-900">Tyrex B2B</span>
+                  <span className="text-2xl font-bold text-gray-900">tyreX</span>
                 </Link>
                 
                 <h2 className="text-3xl font-bold text-gray-900">
@@ -203,13 +237,21 @@ const LoginPage: React.FC = () => {
                   <div className="mt-6 border-t border-gray-200 pt-6">
                     <p className="text-sm text-gray-600 mb-3">Demo hesaplar:</p>
                     <div className="space-y-2 text-xs">
+                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                        <strong>Admin Hesabı (Django Admin Paneli):</strong> admin@tyrex.com / admin123
+                        <div className="text-gray-600 font-medium">Sadece Django Admin paneli için kullanılır.</div>
+                      </div>
                       <div className="bg-blue-50 p-2 rounded border border-blue-200">
-                        <strong>ULTRA Plan:</strong> ahmet@premiumlastik.com / ahmet123
-                        <div className="text-blue-600 font-medium">Premium Lastik AŞ - Tüm dashboard sayfalarına erişim</div>
+                        <strong>PRO Plan (14 Gün Deneme):</strong> pro@guvenotolastik.com / demo123
+                        <div className="text-blue-600 font-medium">Stok ve depo yönetimi - Demo PRO Lastik Mağazası</div>
                       </div>
                       <div className="bg-green-50 p-2 rounded border border-green-200">
-                        <strong>PRO Plan:</strong> mehmet@hizlilastik.com / mehmet123
-                        <div className="text-green-600 font-medium">Hızlı Lastik Ltd - Sadece müşteri takibi</div>
+                        <strong>PRO PLUS Plan (Popüler):</strong> proplus@demolastik.com / demo123
+                        <div className="text-green-600 font-medium">Müşteri takibi, lastik otel - Demo PRO PLUS Lastik Center</div>
+                      </div>
+                      <div className="bg-purple-50 p-2 rounded border border-purple-200">
+                        <strong>ULTRA Plan (Tam Erişim):</strong> ultra@megalastikmerkezi.com / demo123
+                        <div className="text-purple-600 font-medium">Pazaryeri + satış - Demo ULTRA Lastik Empire</div>
                       </div>
                     </div>
                   </div>
@@ -218,40 +260,90 @@ const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Right side - Image/Branding */}
+          {/* Right side - Dynamic Banner */}
           <div className="hidden lg:block relative w-0 flex-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-primary-800">
-              <div className="flex items-center justify-center h-full p-12">
-                <div className="text-center text-white">
-                  <h1 className="text-4xl font-bold mb-6">
-                    B2B Tire Marketplace
-                  </h1>
-                  <p className="text-xl opacity-90 mb-8">
-                    Türkiye&apos;nin en büyük lastik pazaryerine hoş geldiniz
-                  </p>
-                  <div className="grid grid-cols-1 gap-6 max-w-md mx-auto">
-                    <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                      <h3 className="font-semibold mb-2">🏪 Pazaryeri Erişimi</h3>
-                      <p className="text-sm opacity-90">
-                        Binlerce lastik çeşidine anında erişim
+            {bannersLoading ? (
+              <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-primary-800">
+                <div className="flex items-center justify-center h-full">
+                  <LoadingSpinner size="lg" color="white" />
+                </div>
+              </div>
+            ) : banners.length > 0 ? (
+              <div className={`absolute inset-0 bg-gradient-to-br ${banners[0].background_color}`}>
+                <div className="flex items-center justify-center h-full p-12">
+                  <div className="text-center text-white">
+                    {banners[0].image && (
+                      <div className="mb-6">
+                        <img 
+                          src={banners[0].image} 
+                          alt={banners[0].title}
+                          className="max-w-md max-h-48 mx-auto object-contain"
+                        />
+                      </div>
+                    )}
+                    <h1 className="text-4xl font-bold mb-6">
+                      {banners[0].title}
+                    </h1>
+                    {banners[0].subtitle && (
+                      <p className="text-xl opacity-90 mb-8">
+                        {banners[0].subtitle}
                       </p>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                      <h3 className="font-semibold mb-2">💰 Dinamik Fiyatlandırma</h3>
-                      <p className="text-sm opacity-90">
-                        İlişkinize özel indirimli fiyatlar
-                      </p>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                      <h3 className="font-semibold mb-2">🚀 Hızlı Sipariş</h3>
-                      <p className="text-sm opacity-90">
-                        3 tıkla sipariş, otomatik faturalama
-                      </p>
+                    )}
+                    {banners[0].description && (
+                      <div className="text-sm opacity-80 mb-8 max-w-md mx-auto">
+                        {banners[0].description.split('\n').map((line, index) => (
+                          <p key={index} className="mb-2">{line}</p>
+                        ))}
+                      </div>
+                    )}
+                    {banners[0].link_url && banners[0].link_text && (
+                      <a
+                        href={banners[0].link_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-lg font-medium transition-colors"
+                      >
+                        {banners[0].link_text}
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </a>
+                    )}
+                    <div className="grid grid-cols-1 gap-6 max-w-md mx-auto mt-8">
+                      <div className="bg-white/10 backdrop-blur rounded-lg p-4">
+                        <h3 className="font-semibold mb-2">🏪 Pazaryeri Erişimi</h3>
+                        <p className="text-sm opacity-90">
+                          Binlerce lastik çeşidine anında erişim
+                        </p>
+                      </div>
+                      <div className="bg-white/10 backdrop-blur rounded-lg p-4">
+                        <h3 className="font-semibold mb-2">💰 Dinamik Fiyatlandırma</h3>
+                        <p className="text-sm opacity-90">
+                          İlişkinize özel indirimli fiyatlar
+                        </p>
+                      </div>
+                      <div className="bg-white/10 backdrop-blur rounded-lg p-4">
+                        <h3 className="font-semibold mb-2">🚀 Hızlı Sipariş</h3>
+                        <p className="text-sm opacity-90">
+                          3 tıkla sipariş, otomatik faturalama
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-primary-800">
+                <div className="flex items-center justify-center h-full p-12">
+                  <div className="text-center text-white">
+                    <h1 className="text-4xl font-bold mb-6">
+                      B2B Tire Marketplace
+                    </h1>
+                    <p className="text-xl opacity-90 mb-8">
+                      Türkiye&apos;nin en büyük lastik pazaryerine hoş geldiniz
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Layout>

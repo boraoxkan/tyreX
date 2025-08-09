@@ -20,17 +20,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/store/authStore';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
-interface SubscriptionPlan {
-  id: string;
-  name: string;
-  type: string;
-  monthly_price: number;
-  yearly_price?: number;
-  description: string;
-  features: string[];
-  popular?: boolean;
-  current?: boolean;
-}
+import { subscriptionsApi, SubscriptionPlan } from '@/lib/api';
 
 const SubscriptionPage: React.FC = () => {
   const { user, company, subscription } = useAuth();
@@ -39,101 +29,26 @@ const SubscriptionPage: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
-  // Mock plans data - in real app, this would come from API
   useEffect(() => {
-    const mockPlans: SubscriptionPlan[] = [
-      {
-        id: 'free',
-        name: 'Ücretsiz',
-        type: 'free',
-        monthly_price: 0,
-        description: 'Başlangıç için ideal',
-        features: [
-          '1 kullanıcı',
-          '1 depo',
-          '50 ürün limiti',
-          'Temel raporlar',
-          'E-posta desteği'
-        ]
-      },
-      {
-        id: 'customer_access',
-        name: 'Müşteri Takibi',
-        type: 'customer_access',
-        monthly_price: 300,
-        yearly_price: 3000,
-        description: 'Müşteri yönetimi için',
-        features: [
-          '3 kullanıcı',
-          '2 depo',
-          '200 ürün limiti',
-          'Müşteri takip sistemi',
-          'Lastik oteli yönetimi',
-          'Müşteri raporları',
-          'E-posta desteği'
-        ],
-        current: subscription?.plan === 'Müşteri Takibi'
-      },
-      {
-        id: 'basic',
-        name: 'Temel',
-        type: 'basic',
-        monthly_price: 299,
-        yearly_price: 2990,
-        description: 'Küçük işletmeler için',
-        features: [
-          '3 kullanıcı',
-          '2 depo',
-          '500 ürün limiti',
-          'Pazaryeri erişimi',
-          'Dinamik fiyatlandırma',
-          'Detaylı raporlar',
-          'Öncelikli destek'
-        ],
-        current: subscription?.plan === 'Temel Plan'
-      },
-      {
-        id: 'premium',
-        name: 'Premium',
-        type: 'premium',
-        monthly_price: 4500,
-        yearly_price: 45000,
-        description: 'Tam erişim için',
-        features: [
-          '10 kullanıcı',
-          '5 depo',
-          '2000 ürün limiti',
-          'Tüm dashboard özellikleri',
-          'Müşteri takip sistemi',
-          'Pazaryeri erişimi',
-          'Gelişmiş analitik',
-          'AI destekli özellikler',
-          '7/24 destek'
-        ],
-        popular: true,
-        current: subscription?.plan === 'Premium'
-      },
-      {
-        id: 'enterprise',
-        name: 'Kurumsal',
-        type: 'enterprise',
-        monthly_price: 1299,
-        yearly_price: 12990,
-        description: 'Büyük şirketler için',
-        features: [
-          'Sınırsız kullanıcı',
-          'Sınırsız depo',
-          'Sınırsız ürün',
-          'Özel geliştirmeler',
-          'Dedicated hesap yöneticisi',
-          'SLA garantisi',
-          'On-premise seçenekleri'
-        ]
+    const fetchPlans = async () => {
+      try {
+        const fetchedPlans = await subscriptionsApi.getSubscriptionPlans();
+        const plansWithExtras = fetchedPlans.map(p => ({ 
+          ...p, 
+          current: subscription?.plan?.name === p.name,
+          popular: p.plan_type === 'pro_plus',
+          cta: p.plan_type === 'pro' ? '14 Gün Ücretsiz Dene' : 
+               p.plan_type === 'ultra' ? 'Hemen Başla' : 'Planı Seç'
+        }));
+        setPlans(plansWithExtras as SubscriptionPlan[]);
+      } catch (error) {
+        console.error("Failed to fetch subscription plans:", error);
+        setPlans([]); // Hata durumunda boş array
       }
-    ];
+      setIsLoading(false);
+    };
 
-    setPlans(mockPlans);
-    setIsLoading(false);
+    fetchPlans();
   }, [subscription]);
 
   const calculateYearlyDiscount = (monthly: number, yearly?: number) => {
@@ -169,7 +84,7 @@ const SubscriptionPage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Abonelik - Tyrex B2B</title>
+        <title>Abonelik - tyreX</title>
         <meta name="description" content="Abonelik planınızı yönetin" />
       </Head>
 
@@ -180,7 +95,7 @@ const SubscriptionPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold mb-2">
-                  {subscription?.plan || 'Plan Seçilmemiş'}
+                  {subscription?.plan?.name || 'Plan Seçilmemiş'}
                 </h2>
                 <div className="flex items-center space-x-4">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20">
@@ -256,10 +171,13 @@ const SubscriptionPage: React.FC = () => {
           </div>
 
           {/* Plans Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map((plan) => {
               const price = billingCycle === 'yearly' ? plan.yearly_price : plan.monthly_price;
-              const yearlyDiscount = calculateYearlyDiscount(plan.monthly_price, plan.yearly_price);
+              const yearlyDiscount = calculateYearlyDiscount(
+                parseFloat(plan.monthly_price), 
+                plan.yearly_price ? parseFloat(plan.yearly_price) : undefined
+              );
               
               return (
                 <div
@@ -337,11 +255,11 @@ const SubscriptionPage: React.FC = () => {
                     >
                       {plan.current ? (
                         'Mevcut Plan'
-                      ) : plan.type === 'free' ? (
+                      ) : plan.plan_type === 'free' ? (
                         'Ücretsiz Başla'
                       ) : (
                         <>
-                          Planı Seç
+                          {plan.cta || 'Planı Seç'}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </>
                       )}
@@ -365,38 +283,62 @@ const SubscriptionPage: React.FC = () => {
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4">Özellik</th>
-                      <th className="text-center py-3 px-4">Ücretsiz</th>
-                      <th className="text-center py-3 px-4">Müşteri Takibi</th>
-                      <th className="text-center py-3 px-4">Temel</th>
-                      <th className="text-center py-3 px-4">Premium</th>
-                      <th className="text-center py-3 px-4">Kurumsal</th>
+                      <th className="text-center py-3 px-4">PRO</th>
+                      <th className="text-center py-3 px-4">PRO PLUS</th>
+                      <th className="text-center py-3 px-4">ULTRA</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     <tr>
                       <td className="py-3 px-4 font-medium">Kullanıcı Sayısı</td>
-                      <td className="text-center py-3 px-4">1</td>
                       <td className="text-center py-3 px-4">3</td>
-                      <td className="text-center py-3 px-4">3</td>
-                      <td className="text-center py-3 px-4">10</td>
-                      <td className="text-center py-3 px-4">Sınırsız</td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 px-4 font-medium">Depo Sayısı</td>
-                      <td className="text-center py-3 px-4">1</td>
-                      <td className="text-center py-3 px-4">2</td>
-                      <td className="text-center py-3 px-4">2</td>
                       <td className="text-center py-3 px-4">5</td>
                       <td className="text-center py-3 px-4">Sınırsız</td>
                     </tr>
                     <tr>
-                      <td className="py-3 px-4 font-medium">Müşteri Takibi</td>
+                      <td className="py-3 px-4 font-medium">Depo Sayısı</td>
+                      <td className="text-center py-3 px-4">2</td>
+                      <td className="text-center py-3 px-4">3</td>
+                      <td className="text-center py-3 px-4">Sınırsız</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-4 font-medium">Stok ve Depo Yönetimi</td>
+                      <td className="text-center py-3 px-4">
+                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-4 font-medium">Müşteri Takibi & Lastik Otel</td>
                       <td className="text-center py-3 px-4">
                         <X className="h-5 w-5 text-error-500 mx-auto" />
                       </td>
                       <td className="text-center py-3 px-4">
                         <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
                       </td>
+                      <td className="text-center py-3 px-4">
+                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-4 font-medium">Araç Plaka Filtreleme</td>
+                      <td className="text-center py-3 px-4">
+                        <X className="h-5 w-5 text-error-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-4 font-medium">Fatura PDF Görüntüleme</td>
                       <td className="text-center py-3 px-4">
                         <X className="h-5 w-5 text-error-500 mx-auto" />
                       </td>
@@ -418,26 +360,14 @@ const SubscriptionPage: React.FC = () => {
                       <td className="text-center py-3 px-4">
                         <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
                       </td>
-                      <td className="text-center py-3 px-4">
-                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
-                      </td>
-                      <td className="text-center py-3 px-4">
-                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
-                      </td>
                     </tr>
                     <tr>
-                      <td className="py-3 px-4 font-medium">Tam Dashboard</td>
+                      <td className="py-3 px-4 font-medium">Kendi Ürünlerinizi Satabilme</td>
                       <td className="text-center py-3 px-4">
                         <X className="h-5 w-5 text-error-500 mx-auto" />
                       </td>
                       <td className="text-center py-3 px-4">
                         <X className="h-5 w-5 text-error-500 mx-auto" />
-                      </td>
-                      <td className="text-center py-3 px-4">
-                        <X className="h-5 w-5 text-error-500 mx-auto" />
-                      </td>
-                      <td className="text-center py-3 px-4">
-                        <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
                       </td>
                       <td className="text-center py-3 px-4">
                         <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />

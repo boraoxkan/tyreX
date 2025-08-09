@@ -169,6 +169,15 @@ class StockItem(models.Model):
         help_text=_('Depo içindeki konum (Raf: A1-B2 gibi)')
     )
     
+    # Barkod bilgisi
+    barcode = models.CharField(
+        _('Barkod'), 
+        max_length=100, 
+        blank=True, 
+        null=True,
+        help_text=_('Stok kalemi için özel barkod')
+    )
+    
     # Lot/Parti bilgileri
     lot_number = models.CharField(
         _('Lot/Parti Numarası'), 
@@ -284,3 +293,125 @@ class StockItem(models.Model):
             raise ValidationError({
                 'minimum_stock': _('Minimum stok, maksimum stoktan küçük olmalıdır.')
             })
+
+
+class PriceHistory(models.Model):
+    """
+    Fiyat geçmişi modeli - StockItem fiyat değişikliklerini takip eder
+    """
+    stock_item = models.ForeignKey(
+        StockItem,
+        on_delete=models.CASCADE,
+        related_name='price_history',
+        verbose_name=_('Stok Kalemi')
+    )
+    
+    # Eski fiyatlar
+    old_cost_price = models.DecimalField(
+        _('Eski Maliyet Fiyatı'), 
+        max_digits=12, 
+        decimal_places=4, 
+        blank=True, 
+        null=True
+    )
+    old_sale_price = models.DecimalField(
+        _('Eski Satış Fiyatı'), 
+        max_digits=12, 
+        decimal_places=4, 
+        blank=True, 
+        null=True
+    )
+    
+    # Yeni fiyatlar
+    new_cost_price = models.DecimalField(
+        _('Yeni Maliyet Fiyatı'), 
+        max_digits=12, 
+        decimal_places=4, 
+        blank=True, 
+        null=True
+    )
+    new_sale_price = models.DecimalField(
+        _('Yeni Satış Fiyatı'), 
+        max_digits=12, 
+        decimal_places=4, 
+        blank=True, 
+        null=True
+    )
+    
+    # Değişiklik türü
+    CHANGE_TYPES = [
+        ('increase', _('Zam')),
+        ('decrease', _('İndirim')),
+        ('set', _('Fiyat Belirleme')),
+    ]
+    
+    change_type = models.CharField(
+        _('Değişiklik Türü'),
+        max_length=20,
+        choices=CHANGE_TYPES
+    )
+    
+    # Değişiklik miktarları
+    change_percentage = models.DecimalField(
+        _('Değişiklik Yüzdesi'), 
+        max_digits=5, 
+        decimal_places=2, 
+        blank=True, 
+        null=True,
+        help_text=_('Yüzde olarak değişiklik miktarı')
+    )
+    change_amount = models.DecimalField(
+        _('Değişiklik Tutarı'), 
+        max_digits=12, 
+        decimal_places=4, 
+        blank=True, 
+        null=True,
+        help_text=_('Sabit tutar olarak değişiklik miktarı')
+    )
+    
+    # Değişikliği yapan kişi
+    changed_by = models.CharField(
+        _('Değiştiren Kişi'), 
+        max_length=200,
+        help_text=_('Değişikliği yapan kullanıcının adı')
+    )
+    
+    # Değişiklik nedeni
+    change_reason = models.TextField(
+        _('Değişiklik Nedeni'), 
+        blank=True, 
+        null=True,
+        help_text=_('Fiyat değişikliğinin açıklaması')
+    )
+    
+    # Tarih bilgileri
+    created_at = models.DateTimeField(_('Oluşturulma Tarihi'), auto_now_add=True)
+    
+    class Meta:
+        verbose_name = _('Fiyat Geçmişi')
+        verbose_name_plural = _('Fiyat Geçmişleri')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['stock_item', '-created_at']),
+            models.Index(fields=['change_type']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.stock_item.product.name} - {self.get_change_type_display()} - {self.created_at.strftime('%d/%m/%Y %H:%M')}"
+    
+    def get_cost_price_change_display(self):
+        """Maliyet fiyatı değişikliğini formatlar"""
+        if self.old_cost_price and self.new_cost_price:
+            return f"₺{self.old_cost_price} → ₺{self.new_cost_price}"
+        elif self.new_cost_price:
+            return f"₺{self.new_cost_price} (yeni)"
+        return ""
+    
+    def get_sale_price_change_display(self):
+        """Satış fiyatı değişikliğini formatlar"""
+        if self.old_sale_price and self.new_sale_price:
+            return f"₺{self.old_sale_price} → ₺{self.new_sale_price}"
+        elif self.new_sale_price:
+            return f"₺{self.new_sale_price} (yeni)"
+        return ""

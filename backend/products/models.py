@@ -156,6 +156,61 @@ class Product(models.Model):
     brand = models.CharField(_('Marka'), max_length=100, blank=True, null=True)
     model = models.CharField(_('Model'), max_length=100, blank=True, null=True)
     
+    # Lastik özellikleri
+    tire_width = models.CharField(
+        _('Lastik Genişliği'), 
+        max_length=10, 
+        blank=True, 
+        null=True,
+        help_text=_('Örn: 225, 205, 195')
+    )
+    tire_aspect_ratio = models.CharField(
+        _('Lastik Yan Oranı'), 
+        max_length=10, 
+        blank=True, 
+        null=True,
+        help_text=_('Örn: 45, 55, 65')
+    )
+    tire_diameter = models.CharField(
+        _('Lastik Çapı'), 
+        max_length=10, 
+        blank=True, 
+        null=True,
+        help_text=_('Örn: 17, 16, 15')
+    )
+    
+    # Akü özellikleri
+    battery_ampere = models.CharField(
+        _('Akü Amperesi'), 
+        max_length=10, 
+        blank=True, 
+        null=True,
+        help_text=_('Örn: 60Ah, 74Ah, 100Ah')
+    )
+    battery_voltage = models.CharField(
+        _('Akü Voltajı'), 
+        max_length=10, 
+        blank=True, 
+        null=True,
+        help_text=_('Örn: 12V, 24V')
+    )
+    
+    # Jant özellikleri
+    rim_size = models.CharField(
+        _('Jant Boyutu'), 
+        max_length=10, 
+        blank=True, 
+        null=True,
+        help_text=_('Örn: 17", 18", 19"')
+    )
+    rim_bolt_pattern = models.CharField(
+        _('Jant Bijon Deseni'), 
+        max_length=20, 
+        blank=True, 
+        null=True,
+        help_text=_('Örn: 5x112, 4x100')
+    )
+    
     # Durum bilgileri
     is_active = models.BooleanField(_('Aktif'), default=True)
     is_digital = models.BooleanField(_('Dijital Ürün'), default=False)
@@ -207,6 +262,18 @@ class Product(models.Model):
         """Ana ürün resmini döndürür (gelecekte image modeli eklendiğinde)"""
         # TODO: ProductImage modeli eklendiğinde implement edilecek
         return None
+    
+    def get_tire_size(self):
+        """Lastik ebatını 225/45/17 formatında döndürür"""
+        if self.tire_width and self.tire_aspect_ratio and self.tire_diameter:
+            return f"{self.tire_width}/{self.tire_aspect_ratio}/{self.tire_diameter}"
+        return None
+    
+    def get_category_path(self):
+        """Kategori yolunu döndürür"""
+        if self.category:
+            return self.category.get_full_path()
+        return ""
 
 
 class ProductAttributeValue(models.Model):

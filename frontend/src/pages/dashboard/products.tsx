@@ -149,7 +149,7 @@ const ProductsPage: React.FC = () => {
   //   return (
   //     <AuthGuard>
   //       <Head>
-  //         <title>Pazaryeri - Tyrex B2B</title>
+  //         <title>Pazaryeri - tyreX</title>
   //       </Head>
   //       <Layout title="Pazaryeri">
   //         <div className="text-center py-20">
@@ -163,7 +163,7 @@ const ProductsPage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Pazaryeri - Tyrex B2B</title>
+        <title>Pazaryeri - tyreX</title>
         <meta name="description" content="B2B pazaryerinde binlerce ürün keşfedin" />
       </Head>
 

@@ -30,9 +30,22 @@ interface LayoutProps {
   showHeader?: boolean;
 }
 
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: any;
+  current: boolean;
+  requiresSubscription?: string | boolean;
+  subscriptionPlan?: string;
+  subscriptionPrice?: string;
+  showBadge?: boolean;
+  comingSoon?: boolean;
+  requiresWholesaler?: boolean;
+}
+
 const Layout: React.FC<LayoutProps> = ({ 
   children, 
-  title = 'Tyrex B2B', 
+  title = 'tyreX', 
   showSidebar = true, 
   showHeader = true 
 }) => {
@@ -41,6 +54,7 @@ const Layout: React.FC<LayoutProps> = ({
     user, 
     company, 
     isAuthenticated, 
+    subscription, // Eklendi
     hasMarketplaceAccess,
     hasCustomerManagementAccess,
     hasFullDashboardAccess
@@ -50,12 +64,35 @@ const Layout: React.FC<LayoutProps> = ({
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   // Navigation items for authenticated users - GÜNCELLENMIŞ
-  const navigationItems = [
+  const navigationItems: NavigationItem[] = [
     {
       name: 'Dashboard',
       href: '/dashboard',
       icon: Home,
       current: router.pathname === '/dashboard',
+    },
+    {
+      name: 'Stok Yönetimi',
+      href: '/dashboard/my-stock',
+      icon: Package,
+      current: router.pathname.startsWith('/dashboard/my-stock'),
+      // PRO planından itibaren erişilebilir - erişim kontrolü yok
+    },
+    {
+      name: 'Depolarım',
+      href: '/dashboard/my-warehouses',
+      icon: Warehouse,
+      current: router.pathname.startsWith('/dashboard/my-warehouses'),
+      // PRO planından itibaren erişilebilir - erişim kontrolü yok
+    },
+    {
+      name: 'Müşterilerim',
+      href: '/dashboard/customers',
+      icon: Users,
+      current: router.pathname.startsWith('/dashboard/customers'),
+      requiresSubscription: 'customer_management',
+      subscriptionPlan: 'PRO PLUS',
+      subscriptionPrice: '₺350/ay',
     },
     {
       name: 'Pazaryeri',
@@ -64,7 +101,7 @@ const Layout: React.FC<LayoutProps> = ({
       current: router.pathname.startsWith('/marketplace'),
       requiresSubscription: 'marketplace',
       subscriptionPlan: 'ULTRA',
-      subscriptionPrice: '4500₺/ay',
+      subscriptionPrice: '₺500/ay',
     },
     {
       name: 'Sepetim',
@@ -74,7 +111,8 @@ const Layout: React.FC<LayoutProps> = ({
       showBadge: true,
       requiresSubscription: 'marketplace',
       subscriptionPlan: 'ULTRA',
-      subscriptionPrice: '4500₺/ay',
+      subscriptionPrice: '₺500/ay',
+      comingSoon: true,
     },
     {
       name: 'Siparişlerim',
@@ -82,42 +120,9 @@ const Layout: React.FC<LayoutProps> = ({
       icon: Package,
       current: router.pathname.startsWith('/orders'),
       requiresSubscription: 'full_dashboard',
-      subscriptionPlan: 'ULTRA',
-      subscriptionPrice: '4500₺/ay',
-    },
-    {
-      name: 'Stok Yönetimi',
-      href: '/dashboard/my-stock',
-      icon: Package,
-      current: router.pathname.startsWith('/dashboard/my-stock'),
-      requiresSubscription: 'full_dashboard',
-      subscriptionPlan: 'ULTRA',
-      subscriptionPrice: '4500₺/ay',
-    },
-    {
-      name: 'Depolarım',
-      href: '/dashboard/my-warehouses',
-      icon: Warehouse,
-      current: router.pathname.startsWith('/dashboard/my-warehouses'),
-      requiresSubscription: 'full_dashboard',
-      subscriptionPlan: 'ULTRA',
-      subscriptionPrice: '4500₺/ay',
-    },
-    {
-      name: 'Müşterilerim',
-      href: '/dashboard/customers',
-      icon: Users,
-      current: router.pathname.startsWith('/dashboard/customers'),
-      requiresWholesaler: true,
-      requiresSubscription: 'customer_management',
-      subscriptionPlan: 'PRO',
-      subscriptionPrice: '300₺/ay',
-    },
-    {
-      name: 'Abonelik',
-      href: '/dashboard/subscription',
-      icon: CreditCard,
-      current: router.pathname.startsWith('/dashboard/subscription'),
+      subscriptionPlan: 'PRO PLUS',
+      subscriptionPrice: '₺350/ay',
+      comingSoon: true,
     },
     {
       name: 'Raporlar',
@@ -125,8 +130,14 @@ const Layout: React.FC<LayoutProps> = ({
       icon: BarChart3,
       current: router.pathname.startsWith('/reports'),
       requiresSubscription: 'full_dashboard',
-      subscriptionPlan: 'ULTRA',
-      subscriptionPrice: '4500₺/ay',
+      subscriptionPlan: 'PRO PLUS',
+      subscriptionPrice: '₺350/ay',
+    },
+    {
+      name: 'Abonelik',
+      href: '/dashboard/subscription',
+      icon: CreditCard,
+      current: router.pathname.startsWith('/dashboard/subscription'),
     },
     {
       name: 'Ayarlar',
@@ -183,7 +194,6 @@ const Layout: React.FC<LayoutProps> = ({
         {navigationItems.map((item) => {
           const Icon = item.icon;
           
-          // Check subscription access
           let hasSubscriptionAccess = true;
           if (item.requiresSubscription) {
             switch (item.requiresSubscription) {
@@ -199,20 +209,13 @@ const Layout: React.FC<LayoutProps> = ({
             }
           }
           
-          // Check if user is wholesaler for wholesaler-required items
           const isWholesalerAccessible = !item.requiresWholesaler || (company?.company_type === 'wholesaler' || company?.company_type === 'both');
           
-          // Skip item if not accessible
           if (!isWholesalerAccessible) {
             return null;
           }
           
-          // Skip item if subscription doesn't allow access (don't show locked items)
-          if (item.requiresSubscription && !hasSubscriptionAccess) {
-            return null;
-          }
-          
-          const isAccessible = hasSubscriptionAccess;
+          const isAccessible = hasSubscriptionAccess && !item.comingSoon;
           
           return (
             <div key={item.name} className="relative">
@@ -220,16 +223,18 @@ const Layout: React.FC<LayoutProps> = ({
                 href={isAccessible ? item.href : '#'}
                 className={cn(
                   "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative w-full",
-                  item.current
+                  item.current && !item.comingSoon
                     ? "bg-primary-100 text-primary-700"
-                    : isAccessible
+                    : isAccessible && !item.comingSoon
                     ? "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     : "text-gray-400 cursor-not-allowed"
                 )}
                 onClick={(e) => {
-                  if (!isAccessible) {
+                  if (!isAccessible || item.comingSoon) {
                     e.preventDefault();
-                    router.push('/dashboard/subscription');
+                    if (!hasSubscriptionAccess && !item.comingSoon) {
+                      router.push('/dashboard/subscription');
+                    }
                   } else {
                     setSidebarOpen(false);
                   }
@@ -237,38 +242,36 @@ const Layout: React.FC<LayoutProps> = ({
               >
                 <Icon className={cn(
                   "mr-3 h-5 w-5 flex-shrink-0",
-                  item.current
+                  item.current && !item.comingSoon
                     ? "text-primary-500"
-                    : isAccessible
+                    : isAccessible && !item.comingSoon
                     ? "text-gray-400 group-hover:text-gray-500"
                     : "text-gray-300"
                 )} />
                 {item.name}
                 
-                {/* Sepet Badge - YENİ EKLENDİ */}  
-                {item.showBadge && totalItems > 0 && (
+                {item.showBadge && totalItems > 0 && !item.comingSoon && (
                   <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[20px] h-5">
                     {totalItems > 99 ? '99+' : totalItems}
                   </span>
                 )}
                 
-                {/* Premium Badge */}
-                {!isAccessible && item.requiresSubscription && (
-                  <span className="ml-auto text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full font-medium">
-                    Pro
+                {item.comingSoon && (
+                  <span className="ml-auto text-xs px-2 py-1 rounded-full font-medium text-blue-600 bg-blue-100">
+                    Yakında
+                  </span>
+                )}
+                
+                {!isAccessible && !item.comingSoon && item.requiresSubscription && (
+                  <span className={`ml-auto text-xs px-2 py-1 rounded-full font-medium ${
+                    item.subscriptionPlan === 'ULTRA' 
+                      ? 'text-purple-600 bg-purple-100' 
+                      : 'text-green-600 bg-green-100'
+                  }`}>
+                    {item.subscriptionPlan}
                   </span>
                 )}
               </Link>
-              
-              {/* Premium Tooltip */}
-              {!isAccessible && item.requiresSubscription && (
-                <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none">
-                  <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                    {item.subscriptionPlan} gerekli ({item.subscriptionPrice})
-                    <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-gray-900"></div>
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}
@@ -367,7 +370,7 @@ const Layout: React.FC<LayoutProps> = ({
                   <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
                     <span className="text-white font-bold text-lg">T</span>
                   </div>
-                  <span className="text-xl font-bold text-gray-900">Tyrex B2B</span>
+                  <span className="text-xl font-bold text-gray-900">tyreX</span>
                 </Link>
                 
                 <nav className="hidden md:flex space-x-8">

@@ -8,7 +8,7 @@ const ReportsPage: React.FC = () => {
   return (
     <AuthGuard>
       <Head>
-        <title>Raporlar - Tyrex B2B</title>
+        <title>Raporlar - tyreX</title>
         <meta name="description" content="Satış raporlarınızı görüntüleyin ve analiz edin" />
       </Head>
 

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction
 from decimal import Decimal
-from .models import Warehouse, StockItem
+from .models import Warehouse, StockItem, PriceHistory
 from products.models import Product
 from companies.models import Company
 
@@ -116,11 +116,37 @@ class ProductBasicSerializer(serializers.ModelSerializer):
     Stok kalemi için ürün bilgileri
     """
     category_name = serializers.CharField(source='category.name', read_only=True)
+    category_path = serializers.CharField(source='get_category_path', read_only=True)
+    get_tire_size = serializers.CharField(read_only=True)
+    category_id = serializers.IntegerField(source='category.id', read_only=True)
     
     class Meta:
         model = Product
-        fields = ['id', 'name', 'sku', 'brand', 'category_name']
-        read_only_fields = ['id', 'name', 'sku', 'brand', 'category_name']
+        fields = [
+            'id', 'name', 'sku', 'brand', 'category_id', 'category_name', 
+            'category_path', 'tire_width', 'tire_aspect_ratio', 'tire_diameter',
+            'battery_ampere', 'battery_voltage', 'rim_size', 'rim_bolt_pattern',
+            'get_tire_size'
+        ]
+        read_only_fields = [
+            'id', 'name', 'sku', 'brand', 'category_id', 'category_name', 
+            'category_path', 'tire_width', 'tire_aspect_ratio', 'tire_diameter',
+            'battery_ampere', 'battery_voltage', 'rim_size', 'rim_bolt_pattern',
+            'get_tire_size'
+        ]
+
+
+class PriceHistorySerializer(serializers.ModelSerializer):
+    """
+    Fiyat geçmişi için serializer
+    """
+    change_type_display = serializers.CharField(source='get_change_type_display', read_only=True)
+    cost_price_change_display = serializers.CharField(source='get_cost_price_change_display', read_only=True)
+    sale_price_change_display = serializers.CharField(source='get_sale_price_change_display', read_only=True)
+
+    class Meta:
+        model = PriceHistory
+        fields = '__all__'
 
 
 class StockItemSerializer(serializers.ModelSerializer):
@@ -134,6 +160,7 @@ class StockItemSerializer(serializers.ModelSerializer):
     stock_status = serializers.SerializerMethodField()
     stock_status_display = serializers.SerializerMethodField()
     total_value = serializers.SerializerMethodField()
+    price_history = PriceHistorySerializer(many=True, read_only=True)
     
     class Meta:
         model = StockItem
@@ -152,6 +179,7 @@ class StockItemSerializer(serializers.ModelSerializer):
             'cost_price',
             'sale_price',
             'location_code',
+            'barcode',
             'lot_number',
             'expiry_date',
             'stock_status',
@@ -162,12 +190,13 @@ class StockItemSerializer(serializers.ModelSerializer):
             'last_inbound_date',
             'last_outbound_date',
             'last_count_date',
+            'price_history',
             'created_at',
             'updated_at'
         ]
         read_only_fields = [
             'id', 'available_quantity', 'stock_status', 'stock_status_display',
-            'total_value', 'created_at', 'updated_at'
+            'total_value', 'price_history', 'created_at', 'updated_at'
         ]
     
     def get_available_quantity(self, obj):
@@ -231,6 +260,7 @@ class StockItemCreateUpdateSerializer(serializers.ModelSerializer):
             'cost_price',
             'sale_price',
             'location_code',
+            'barcode',
             'lot_number',
             'expiry_date',
             'is_active',
@@ -389,3 +419,49 @@ class WarehouseSummarySerializer(serializers.Serializer):
     total_quantity = serializers.IntegerField()
     total_value = serializers.DecimalField(max_digits=15, decimal_places=2)
     warehouses = StockSummarySerializer(many=True)
+
+class BulkPriceUpdateSerializer(serializers.Serializer):
+    """
+    Toplu fiyat güncelleme için serializer
+    """
+    stock_item_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        allow_empty=False,
+        help_text="Fiyatı güncellenecek stok kalemlerinin ID listesi"
+    )
+    change_type = serializers.ChoiceField(
+        choices=[('increase', 'Zam'), ('decrease', 'İndirim')],
+        help_text="Yapılacak işlemin türü (zam/indirim)"
+    )
+    value_type = serializers.ChoiceField(
+        choices=[('percentage', 'Yüzde'), ('fixed', 'Sabit Tutar')],
+        help_text="Değişiklik değeri türü (yüzde/sabit)"
+    )
+    value = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+        help_text="Uygulanacak yüzde veya sabit tutar değeri"
+    )
+    price_type = serializers.ChoiceField(
+        choices=[('cost_price', 'Maliyet Fiyatı'), ('sale_price', 'Satış Fiyatı'), ('both', 'Her İkisi de')],
+        help_text="Değişikliğin uygulanacağı fiyat türü"
+    )
+    change_reason = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+        help_text="Fiyat değişikliğinin nedeni"
+    )
+
+    def validate_stock_item_ids(self, ids):
+        request = self.context.get('request')
+        if not request or not hasattr(request.user, 'company'):
+            raise serializers.ValidationError("İstek (request) bağlamı bulunamadı veya kullanıcı bir şirkete bağlı değil.")
+        
+        company = request.user.company
+        
+        count = StockItem.objects.filter(id__in=ids, warehouse__company=company).count()
+        if count != len(set(ids)):
+            raise serializers.ValidationError("Geçersiz veya yetkiniz olmayan stok kalemleri listede mevcut.")
+        return ids

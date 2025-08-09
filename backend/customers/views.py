@@ -29,7 +29,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             return Customer.objects.none()
         
         # Kullanıcının şirketi toptancı olmalı
-        if not user.company.is_wholesaler():
+        if not user.company.is_retailer():
             return Customer.objects.none()
         
         queryset = Customer.objects.filter(
@@ -134,9 +134,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def dashboard(self, request):
         """Müşteriler dashboard verisi"""
         user = request.user
-        if not user.company or not user.company.is_wholesaler():
+        if not user.company or not user.company.is_retailer():
             return Response(
-                {'error': 'Bu işlem sadece toptancılar için geçerlidir.'}, 
+                {'error': 'Bu işlem sadece perakendeciler için geçerlidir.'}, 
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -152,64 +152,13 @@ class CustomerViewSet(viewsets.ModelViewSet):
             'active_customers': customers.filter(is_active=True).count(),
             'vip_customers': customers.filter(is_vip=True).count(),
             'tire_hotel_customers': customers.filter(tire_hotel_enabled=True).count(),
-            
-            # Ziyaret istatistikleri
-            'total_visits_today': CustomerVisit.objects.filter(
-                customer__wholesaler=user.company,
-                visit_date__date=today
-            ).count(),
-            'total_visits_this_month': CustomerVisit.objects.filter(
-                customer__wholesaler=user.company,
-                visit_date__date__gte=month_start
-            ).count(),
-            'avg_customer_satisfaction': CustomerVisit.objects.filter(
-                customer__wholesaler=user.company,
-                customer_satisfaction__isnull=False
-            ).aggregate(
-                avg_satisfaction=Coalesce(Avg('customer_satisfaction'), 0.0, output_field=models.FloatField())
-            )['avg_satisfaction'],
-            
-            # Lastik oteli istatistikleri
-            'total_stored_tires': StoredTire.objects.filter(
-                customer__wholesaler=user.company,
-                is_active=True
-            ).count(),
-            'total_storage_revenue': StoredTire.objects.filter(
-                customer__wholesaler=user.company
-            ).aggregate(
-                total_revenue=Coalesce(Sum('storage_fee_monthly'), 0.0, output_field=models.DecimalField(max_digits=12, decimal_places=2))
-            )['total_revenue'],
-            'overdue_pickups': StoredTire.objects.filter(
-                customer__wholesaler=user.company,
-                is_active=True,
-                planned_pickup_date__lt=today
-            ).count(),
         }
-        
-        # Son ziyaretler
-        recent_visits = CustomerVisit.objects.filter(
-            customer__wholesaler=user.company
-        ).select_related('customer', 'served_by').order_by('-visit_date')[:5]
-        
-        # Son depolanmış lastikler
-        recent_tire_storage = StoredTire.objects.filter(
-            customer__wholesaler=user.company
-        ).select_related('customer').order_by('-storage_date')[:5]
-        
-        # En çok ziyaret eden müşteriler
-        from django.db.models import Value
-        from django.utils import timezone as tz
-        
-        top_customers = customers.annotate(
-            total_visits=Count('visits'),
-            last_visit_date=Value(tz.now(), output_field=models.DateTimeField())
-        ).order_by('-total_visits')[:5]
         
         dashboard_data = {
             'stats': stats,
-            'recent_visits': CustomerVisitSerializer(recent_visits, many=True).data,
-            'recent_tire_storage': StoredTireSerializer(recent_tire_storage, many=True).data,
-            'top_customers': CustomerListSerializer(top_customers, many=True).data,
+            'recent_visits': [], # Boş liste döndür
+            'recent_tire_storage': [], # Boş liste döndür
+            'top_customers': [], # Boş liste döndür
         }
         
         return Response(dashboard_data)
@@ -225,7 +174,7 @@ class CustomerVisitViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Sadece kullanıcının şirketinin müşteri ziyaretlerini getir"""
         user = self.request.user
-        if not user.company or not user.company.is_wholesaler():
+        if not user.company or not user.company.is_retailer():
             return CustomerVisit.objects.none()
         
         queryset = CustomerVisit.objects.filter(
@@ -266,7 +215,7 @@ class StoredTireViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Sadece kullanıcının şirketinin depolanmış lastiklerini getir"""
         user = self.request.user
-        if not user.company or not user.company.is_wholesaler():
+        if not user.company or not user.company.is_retailer():
             return StoredTire.objects.none()
         
         queryset = StoredTire.objects.filter(

@@ -9,11 +9,13 @@ urlpatterns = [
     
     # API v1 endpoint'leri
     path('api/v1/', include('users.urls')),
+    path('api/v1/products/', include('products.urls')),
     path('api/v1/inventory/', include('inventory.urls')),
     path('api/v1/market/', include('market.urls')),
     path('api/v1/orders/', include('orders.urls')),
     path('api/v1/customers/', include('customers.urls')),
     path('api/v1/subscriptions/', include('subscriptions.urls')),
+    path('api/v1/site-settings/', include('site_settings.urls')),
 ]
 
 # Debug Toolbar URL'ini sadece DEBUG=True ve ENABLE_DEBUG_TOOLBAR=True iken ekle

@@ -1,4 +1,3 @@
-// frontend/src/store/authStore.ts - Complete fixed version
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { 
@@ -6,6 +5,7 @@ import {
   userApi, 
   User, 
   Company,
+  Subscription,
   LoginRequest, 
   RegisterRequest, 
   setAuthTokens, 
@@ -18,20 +18,10 @@ interface AuthState {
   // State
   user: User | null;
   company: Company | null;
+  subscription: Subscription | null;
   isLoading: boolean;
   isInitialized: boolean;
   error: string | null;
-  
-  // Subscription info
-  subscription: {
-    plan: string | null;
-    status: string | null;
-    marketplace_access: boolean;
-    dynamic_pricing: boolean;
-    customer_management_access: boolean;
-    full_dashboard_access: boolean;
-    trial_end_date: string | null;
-  } | null;
   
   // Actions
   login: (credentials: LoginRequest) => Promise<void>;
@@ -49,119 +39,46 @@ export const useAuthStore = create<AuthState>()(
       // Initial state
       user: null,
       company: null,
+      subscription: null,
       isLoading: false,
       isInitialized: false,
       error: null,
-      subscription: null,
 
       // Login action
       login: async (credentials: LoginRequest) => {
+        set({ isLoading: true, error: null });
+        console.log('authStore: Attempting login with credentials:', credentials.email);
         try {
-          set({ isLoading: true, error: null });
-          
-          console.log('🔐 Logging in user:', credentials.email);
-          
           const response = await authApi.login(credentials);
-          
-          console.log('Login response:', response);
-          
-          // Check if response has the expected structure
-          if (!response.access || !response.refresh) {
-            throw new Error('Invalid login response: missing tokens');
-          }
-          
-          // Store tokens
+          console.log('authStore: Login API successful, setting tokens.');
           setAuthTokens(response.access, response.refresh);
-          
-          // The user data might be in response.user or just response
-          const userData = response.user || response;
-          
-          if (!userData || !userData.email) {
-            // If no user data in login response, fetch it separately
-            try {
-              const userProfile = await userApi.getProfile();
-              set({ 
-                user: userProfile,
-                isLoading: false,
-                error: null 
-              });
-            } catch (profileError) {
-              console.error('Failed to fetch user profile after login:', profileError);
-              throw new Error('Login successful but failed to fetch user profile');
-            }
-          } else {
-            set({ 
-              user: userData,
-              isLoading: false,
-              error: null 
-            });
-          }
-          
-          // Fetch additional user data
-          await get().checkAuth();
-          
-          console.log('✅ Login successful');
-          
+          await get().checkAuth(); // checkAuth will fetch user, company, and subscription
+          console.log('authStore: checkAuth completed after login.');
         } catch (error: any) {
           const errorMessage = handleApiError(error);
-          console.error('❌ Login failed:', errorMessage, error);
-          
-          // Clear any stored tokens on failure
+          console.error('authStore: Login failed:', errorMessage);
           clearAuthTokens();
-          
-          set({ 
-            user: null, 
-            company: null,
-            subscription: null,
-            isLoading: false, 
-            error: errorMessage 
-          });
-          
+          set({ user: null, company: null, subscription: null, isLoading: false, error: errorMessage });
           throw new Error(errorMessage);
         }
       },
 
       // Register action
       register: async (data: RegisterRequest) => {
+        set({ isLoading: true, error: null });
         try {
-          set({ isLoading: true, error: null });
-          
-          console.log('📝 Registering user:', data.email);
-          
-          const response = await authApi.register(data);
-          
-          console.log('Registration response:', response);
-          
-          // After successful registration, automatically login
-          await get().login({
-            email: data.email,
-            password: data.password
-          });
-          
-          console.log('✅ Registration successful:', response.message);
-          
+          await authApi.register(data);
+          await get().login({ email: data.email, password: data.password });
         } catch (error: any) {
           const errorMessage = handleApiError(error);
-          console.error('❌ Registration failed:', errorMessage, error);
-          
-          set({ 
-            user: null, 
-            company: null,
-            subscription: null,
-            isLoading: false, 
-            error: errorMessage 
-          });
-          
+          set({ user: null, company: null, subscription: null, isLoading: false, error: errorMessage });
           throw new Error(errorMessage);
         }
       },
 
       // Logout action
       logout: () => {
-        console.log('🚪 Logging out user');
-        
         clearAuthTokens();
-        
         set({ 
           user: null, 
           company: null,
@@ -170,8 +87,6 @@ export const useAuthStore = create<AuthState>()(
           error: null,
           isInitialized: true
         });
-        
-        // Redirect to login page
         if (typeof window !== 'undefined') {
           window.location.href = '/auth/login';
         }
@@ -179,126 +94,70 @@ export const useAuthStore = create<AuthState>()(
 
       // Check authentication status
       checkAuth: async () => {
-        try {
+        if (!get().isInitialized) {
           set({ isLoading: true });
-          
+          console.log('authStore: checkAuth - Initializing...');
+        }
+
+        try {
           if (!isAuthenticated()) {
-            set({ 
-              user: null, 
-              company: null,
-              subscription: null,
-              isLoading: false, 
-              isInitialized: true 
-            });
-            return;
+            console.log('authStore: checkAuth - Not authenticated, throwing error.');
+            throw new Error('Not authenticated');
           }
           
-          console.log('🔍 Checking authentication status');
-          
-          // Fetch user profile
+          console.log('authStore: checkAuth - Authenticated, fetching profile and company info.');
           const user = await userApi.getProfile();
-          
-          if (!user || !user.email) {
-            throw new Error('Invalid user profile data');
-          }
-          
-          // Fetch company info
-          let company = null;
-          let subscription = null;
-          
-          try {
-            const companyData = await userApi.getCompanyInfo();
-            company = companyData.company;
-            
-            // Set subscription info based on company or user data
-            if (company) {
-              subscription = {
-                plan: 'Temel Plan', // This should come from API
-                status: 'trialing', // This should come from API
-                marketplace_access: true, // This should come from API
-                dynamic_pricing: true, // This should come from API
-                customer_management_access: false, // This should come from API
-                full_dashboard_access: false, // This should come from API
-                trial_end_date: null // This should come from API
-              };
-            }
-          } catch (companyError) {
-            console.warn('⚠️ Could not fetch company info:', companyError);
-            // Don't throw here, just continue without company info
-          }
-          
+          const companyInfo = await userApi.getCompanyInfo();
+
+          console.log('authStore: checkAuth - Fetched user:', user);
+          console.log('authStore: checkAuth - Fetched company info:', companyInfo);
+
           set({ 
             user,
-            company,
-            subscription,
+            company: companyInfo.company,
+            subscription: user.subscription, // Directly use subscription from user profile
             isLoading: false, 
             isInitialized: true,
             error: null 
           });
-          
-          console.log('✅ Auth check successful:', user.email);
+          console.log('authStore: checkAuth - State updated.');
           
         } catch (error: any) {
-          console.error('❌ Auth check failed:', error);
-          
-          // If auth check fails, clear tokens and redirect
+          console.error('authStore: checkAuth failed:', error.message);
           clearAuthTokens();
-          
           set({ 
             user: null, 
             company: null,
             subscription: null,
             isLoading: false, 
             isInitialized: true,
-            error: null 
+            error: null
           });
         }
       },
 
       // Update profile action
       updateProfile: async (data: Partial<User>) => {
+        set({ isLoading: true, error: null });
         try {
-          set({ isLoading: true, error: null });
-          
-          console.log('👤 Updating user profile');
-          
           const response = await userApi.updateProfile(data);
-          
-          set({ 
-            user: response.user,
-            isLoading: false,
-            error: null 
-          });
-          
-          console.log('✅ Profile updated successfully');
-          
+          set({ user: response.user, isLoading: false, error: null });
         } catch (error: any) {
           const errorMessage = handleApiError(error);
-          console.error('❌ Profile update failed:', errorMessage);
-          
-          set({ 
-            isLoading: false, 
-            error: errorMessage 
-          });
-          
+          set({ isLoading: false, error: errorMessage });
           throw new Error(errorMessage);
         }
       },
 
       // Clear error action
-      clearError: () => {
-        set({ error: null });
-      },
+      clearError: () => set({ error: null }),
 
       // Set loading action
-      setLoading: (loading: boolean) => {
-        set({ isLoading: loading });
-      },
+      setLoading: (loading: boolean) => set({ isLoading: loading }),
     }),
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
-      // Only persist user and company data, not loading states
       partialize: (state) => ({ 
         user: state.user,
         company: state.company,
@@ -310,33 +169,30 @@ export const useAuthStore = create<AuthState>()(
 
 // Helper hooks for common use cases
 export const useAuth = () => {
-  const { user, company, subscription, isLoading, error, isInitialized } = useAuthStore();
+  const state = useAuthStore();
   
   return {
-    user,
-    company,
-    subscription,
-    isLoading,
-    error,
-    isInitialized,
-    isAuthenticated: !!user,
-    hasMarketplaceAccess: subscription?.marketplace_access || false,
-    hasDynamicPricing: subscription?.dynamic_pricing || false,
-    hasCustomerManagementAccess: subscription?.customer_management_access || false,
-    hasFullDashboardAccess: subscription?.full_dashboard_access || false,
+    ...state,
+    isAuthenticated: !!state.user,
+    // Permissions are now directly from the subscription object
+    hasMarketplaceAccess: state.subscription?.marketplace_access ?? false,
+    hasDynamicPricing: state.subscription?.dynamic_pricing ?? false,
+    hasCustomerManagementAccess: state.subscription?.customer_management_access ?? false,
+    hasFullDashboardAccess: state.subscription?.full_dashboard_access ?? false,
+    hasInventoryManagementAccess: state.subscription?.inventory_management_access ?? false,
   };
 };
 
-export const useAuthActions = () => {
-  const { login, register, logout, checkAuth, updateProfile, clearError, setLoading } = useAuthStore();
-  
-  return {
-    login,
-    register,
-    logout,
-    checkAuth,
-    updateProfile,
-    clearError,
-    setLoading,
-  };
-};
+export const useAuthActions = () => useAuthStore(
+  (state) => ({
+    login: state.login,
+    register: state.register,
+    logout: state.logout,
+    checkAuth: state.checkAuth,
+    updateProfile: state.updateProfile,
+    clearError: state.clearError,
+    setLoading: state.setLoading,
+  })
+);
+
+export const useUser = () => useAuthStore((state) => state.user);

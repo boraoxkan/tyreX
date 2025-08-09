@@ -87,6 +87,13 @@ class RetailerWholesaler(models.Model):
         _('Ödeme Vadesi (Gün)'), 
         default=30
     )
+    discount_rate = models.DecimalField(
+        _('İskonto Oranı'),
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+        help_text=_('Bu toptancıdan alınan ürünlerde uygulanacak iskonto oranı (örneğin, 5.00 için %5)')
+    )
     
     class Meta:
         verbose_name = _('Perakendeci-Toptancı İlişkisi')

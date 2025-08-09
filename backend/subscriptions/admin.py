@@ -44,7 +44,8 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
                 'marketplace_access',
                 'dynamic_pricing', 
                 'advanced_analytics',
-                'priority_support'
+                'priority_support',
+                'features'
             ),
             'classes': ('collapse',)
         }),

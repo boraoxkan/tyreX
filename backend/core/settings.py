@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'debug_toolbar',
 
     # Kendi Uygulamalarımız
+    'core',
     'users',
     'companies',  # YENİ EKLENDİ
     'products',   # YENİ EKLENDİ
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
     'market',         # YENİ EKLENDİ
     'orders',
     'customers',  # Müşteri yönetimi
+    'site_settings',  # Site ayarları
 ]
 
 MIDDLEWARE = [
@@ -132,8 +134,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle'
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',  # Anonim kullanıcılar için günde 100 istek
-        'user': '1000/day' # Kayıtlı kullanıcılar için günde 1000 istek
+        'anon': '10000/day',  # Anonim kullanıcılar için günde 10000 istek (Geliştirme)
+        'user': '100000/day' # Kayıtlı kullanıcılar için günde 100000 istek (Geliştirme)
     }
 }
 

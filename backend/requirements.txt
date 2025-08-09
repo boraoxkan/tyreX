@@ -17,3 +17,5 @@ django-redis
 django-cors-headers
 django-debug-toolbar
 djangorestframework-ratelimit
+Faker
+Pillow

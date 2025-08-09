@@ -76,3 +76,24 @@ Bu dosya, Tyrex projesi üzerinde çalışan tüm AI subagent'ları için ana re
 
 - **API URL:**
   Docker network'ü içinde backend servisine http://backend:8000 adresinden erişilir. Frontend'den yapılacak tüm API çağrıları bu adresi hedeflemelidir.
+
+## Demo Hesaplar:
+
+Geliştirme ve test amaçları için aşağıdaki demo hesapları kullanabilirsiniz:
+
+**Admin Hesabı:**
+- Email: admin@tyrex.com
+- Şifre: admin123
+- Rol: Süper yönetici (tüm yetkilere sahip)
+
+**Pro Bayi Hesabı:**
+- Email: pro@guvenotolastik.com  
+- Şifre: pro123
+- Şirket: Güven Oto Lastik
+- Abonelik: Pro plan
+
+**Ultra Toptancı Hesabı:**
+- Email: ultra@megalastikmerkezi.com
+- Şifre: ultra123  
+- Şirket: Mega Lastik Merkezi
+- Abonelik: Ultra plan

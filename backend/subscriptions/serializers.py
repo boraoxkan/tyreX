@@ -30,6 +30,7 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
             'priority_support',
             'customer_management_access',
             'full_dashboard_access',
+            'features',
             'tyrex_commission_rate',
             'tyrex_commission_decimal',
             'sort_order',

@@ -12,6 +12,7 @@ class SubscriptionPlan(models.Model):
     """
     PLAN_TYPES = [
         ('pro', _('PRO')),
+        ('pro_plus', _('PRO PLUS')),
         ('ultra', _('ULTRA')),
     ]
     
@@ -84,6 +85,12 @@ class SubscriptionPlan(models.Model):
         default=False,
         help_text=_('Öncelikli müşteri desteği')
     )
+    features = models.JSONField(
+        _('Özellikler Listesi'),
+        default=list,
+        blank=True,
+        help_text=_('Planda gösterilecek özelliklerin listesi (metin olarak).')
+    )
     customer_management_access = models.BooleanField(
         _('Müşteri Takibi Erişimi'),
         default=False,
@@ -93,6 +100,11 @@ class SubscriptionPlan(models.Model):
         _('Tam Dashboard Erişimi'),
         default=False,
         help_text=_('Tüm dashboard sayfalarına erişebilir mi?')
+    )
+    inventory_management_access = models.BooleanField(
+        _('Envanter Yönetimi Erişimi'),
+        default=False,
+        help_text=_('Envanter ve depo yönetimi sayfalarına erişebilir mi?')
     )
     
     # Komisyon Oranları (Pazaryeri için)
@@ -295,6 +307,10 @@ class Subscription(models.Model):
     def can_access_full_dashboard(self):
         """Tüm dashboard sayfalarına erişebilir mi?"""
         return self.is_active_or_trialing() and self.plan.full_dashboard_access
+    
+    def can_access_inventory_management(self):
+        """Envanter yönetimi sayfalarına erişebilir mi?"""
+        return self.is_active_or_trialing() and self.plan.inventory_management_access
     
     def get_remaining_api_calls(self):
         """Kalan API çağrısı sayısı"""
